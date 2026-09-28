@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>🍷 Ma Cave à Vin</title>
+  <style>
+    :root {
+      --primary: #722F37;
+      --primary-container: #FCE8E6;
+      --on-primary-container: #410006;
+      --bg: #F8F9FA;
+      --surface: #FFFFFF;
+      --surface-variant: #F1F3F5;
+      --text: #1F2937;
+      --text-muted: #6B7280;
+      --border: #E5E7EB;
+      --chip-bg: #E9ECEF;
+      --chip-active: #722F37;
+      --chip-active-text: #FFFFFF;
+      --success: #2E7D32;
+      --star: #FFA000;
+    }
+
+    body.dark {
+      --primary: #FFB3B8;
+      --primary-container: #5C1D24;
+      --on-primary-container: #FFDADA;
+      --bg: #121212;
+      --surface: #1E1E1E;
+      --surface-variant: #2A2A2A;
+      --text: #F3F4F6;
+      --text-muted: #9CA3AF;
+      --border: #374151;
+      --chip-bg: #2C2C2E;
+      --chip-active: #FFB3B8;
+      --chip-active-text: #410006;
+      --success: #81C784;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      background: var(--primary-container);
+      color: var(--on-primary-container);
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    header h1 { margin: 0; font-size: 18px; font-weight: 800; }
+    .header-actions { display: flex; gap: 8px; }
+    .icon-btn {
+      background: none; border: none; font-size: 18px; cursor: pointer;
+      color: var(--on-primary-container); border-radius: 50%; width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .tabs {
+      display: flex;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .tab {
+      flex: 1; text-align: center; padding: 10px 4px; font-size: 11px;
+      font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent;
+      color: var(--text-muted);
+    }
+    .tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .banner {
+      background: var(--surface-variant);
+      padding: 6px 14px; font-size: 12px; font-weight: 600;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .badge-btn {
+      background: #E8F5E9; color: var(--success); border: 1px solid #C8E6C9;
+      border-radius: 12px; padding: 2px 8px; font-size: 11px; cursor: pointer;
+    }
+    .badge-btn.active { background: var(--success); color: white; }
+
+    .filters-bar {
+      padding: 8px 12px; display: flex; flex-direction: column; gap: 6px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+    }
+    .search-input {
+      width: 100%; padding: 8px 12px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-size: 13px; outline: none;
+    }
+    .scroll-row {
+      display: flex; gap: 6px; overflow-x: auto; white-space: nowrap;
+      scrollbar-width: none;
+    }
+    .scroll-row::-webkit-scrollbar { display: none; }
+    .chip {
+      background: var(--chip-bg); color: var(--text); border-radius: 16px;
+      padding: 4px 10px; font-size: 11px; cursor: pointer; border: none; flex-shrink: 0;
+    }
+    .chip.active { background: var(--chip-active); color: var(--chip-active-text); font-weight: bold; }
+    .select-chip {
+      background: var(--chip-bg); color: var(--text); border: none;
+      padding: 4px 8px; font-size: 11px; border-radius: 16px; outline: none;
+    }
+
+    main {
+      flex: 1; overflow-y: auto; padding: 10px 12px; display: flex;
+      flex-direction: column; gap: 10px;
+    }
+
+    .wine-card {
+      background: var(--surface); border-radius: 12px; display: flex;
+      overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      border: 1px solid var(--border);
+    }
+    .color-stripe { width: 5px; flex-shrink: 0; }
+    .card-content { flex: 1; padding: 10px; display: flex; gap: 10px; }
+    .card-photo {
+      width: 60px; height: 60px; border-radius: 8px; background: var(--surface-variant);
+      display: flex; align-items: center; justify-content: center; font-size: 24px;
+      overflow: hidden; flex-shrink: 0;
+    }
+    .card-photo img { width: 100%; height: 100%; object-fit: cover; }
+    .card-details { flex: 1; min-width: 0; }
+    .card-title-row { display: flex; justify-content: space-between; align-items: flex-start; }
+    .card-title { font-size: 14px; font-weight: 700; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .domaine { font-size: 12px; color: var(--text-muted); margin: 2px 0; }
+    .meta-line { font-size: 11px; color: var(--text-muted); display: flex; gap: 4px; align-items: center; }
+    .millesime-badge {
+      background: #FFE082; color: #5D4037; font-weight: bold;
+      padding: 1px 4px; border-radius: 4px; font-size: 10px;
+    }
+    .apogee-badge {
+      display: inline-block; background: var(--primary-container); color: var(--on-primary-container);
+      font-size: 10px; font-weight: bold; border-radius: 4px; padding: 2px 5px; margin-top: 4px;
+    }
+    .card-bottom {
+      display: flex; justify-content: space-between; align-items: center; margin-top: 6px;
+    }
+    .qty-control {
+      display: flex; align-items: center; background: var(--surface-variant);
+      border-radius: 12px; padding: 2px 4px;
+    }
+    .qty-btn {
+      background: none; border: none; color: var(--text); font-size: 14px;
+      font-weight: bold; width: 22px; height: 22px; cursor: pointer;
+    }
+    .btn-action {
+      background: var(--primary); color: white; border: none; border-radius: 6px;
+      padding: 4px 8px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px;
+    }
+
+    .fab {
+      position: fixed; bottom: 20px; right: 20px; width: 52px; height: 52px;
+      border-radius: 26px; background: var(--primary); color: white; border: none;
+      font-size: 24px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; z-index: 10;
+    }
+
+    /* Modales */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      display: none; align-items: center; justify-content: center; padding: 16px; z-index: 100;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-content {
+      background: var(--surface); border-radius: 14px; width: 100%; max-width: 440px;
+      max-height: 90vh; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .modal-header { font-size: 16px; font-weight: bold; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+    .form-group input, .form-group select, .form-group textarea {
+      padding: 8px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); font-size: 13px; outline: none;
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+
+    /* Stats Screen */
+    .stat-card {
+      background: var(--surface-variant); border-radius: 10px; padding: 12px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .stat-val { font-size: 20px; font-weight: 800; color: var(--primary); }
+    .progress-bar-bg { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; margin-top: 2px; }
+    .progress-bar-fill { height: 100%; }
+
+    /* Sommelier Cards */
+    .sommelier-cat {
+      display: flex; align-items: center; gap: 12px; padding: 12px;
+      background: var(--surface-variant); border-radius: 10px; cursor: pointer; margin-bottom: 8px;
+    }
+
+    .cave-item-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 10px; background: var(--surface-variant); border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🍷 Ma Cave à Vin</h1>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="toggleTheme()" title="Thème">🌙</button>
+      <button class="icon-btn" onclick="openSommelier()" title="Sommelier">🍽️</button>
+      <button class="icon-btn" onclick="openMenu()" title="Options">⋮</button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(0)">🍾 Cave (<span id="countCave">0</span>)</div>
+    <div class="tab" onclick="switchTab(1)">📜 Dégustés (<span id="countHist">0</span>)</div>
+    <div class="tab" onclick="switchTab(2)">📊 Stats</div>
+    <div class="tab" onclick="switchTab(3)">⭐ Wishlist (<span id="countWish">0</span>)</div>
+  </div>
+
+  <div class="banner" id="bannerStats">
+    <span id="bannerText">0 bouteilles • 0 €</span>
+    <button class="badge-btn" id="filterDrinkBtn" onclick="togglePretABoire()">⏰ <span id="readyDrinkCount">0</span> à boire</button>
+  </div>
+
+  <div class="filters-bar" id="filtersArea">
+    <input type="text" class="search-input" id="searchBox" placeholder="Rechercher un vin, domaine, cave..." oninput="renderApp()">
+    
+    <div class="scroll-row" id="cavesChips"></div>
+
+    <div class="scroll-row">
+      <div id="couleursChips" style="display:flex; gap:6px;"></div>
+      <select class="select-chip" id="regionFilter" onchange="renderApp()"></select>
+      <select class="select-chip" id="sortFilter" onchange="renderApp()">
+        <option value="nom">Nom (A-Z)</option>
+        <option value="millesime_desc">Millésime (Récent)</option>
+        <option value="millesime_asc">Millésime (Ancien)</option>
+        <option value="prix_desc">Prix (Plus cher)</option>
+        <option value="qte_desc">Quantité (Plus élevée)</option>
+      </select>
+    </div>
+  </div>
+
+  <main id="mainContainer"></main>
+
+  <button class="fab" id="fabAdd" onclick="openAddDialog()">+</button>
+
+  <!-- Modale Ajout / Modification -->
+  <div class="modal-backdrop" id="wineModal">
+    <div class="modal-content">
+      <div class="modal-header" id="modalTitle">Ajouter un vin</div>
+      
+      <div class="form-group" style="text-align: center;">
+        <label>Photo du vin</label>
+        <input type="file" id="winePhotoInput" accept="image/*" onchange="handlePhotoUpload(event)">
+        <img id="winePhotoPreview" style="display:none; max-height:80px; object-fit:contain; border-radius:6px; margin:4px auto 0;">
+      </div>
+
+      <div class="form-group">
+        <label><input type="checkbox" id="wEstSouhait"> ⭐ Dans ma Wishlist (à acheter plus tard)</label>
+      </div>
+
+      <div class="form-group">
+        <label>Nom du vin *</label>
+        <input type="text" id="wNom" required>
+      </div>
+
+      <div class="form-group">
+        <label>Domaine / Producteur</label>
+        <input type="text" id="wDomaine">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Région</label>
+          <input type="text" id="wRegion" list="regionsList">
+        </div>
+        <div class="form-group">
+          <label>AOP / Appellation</label>
+          <input type="text" id="wAop">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Millésime</label>
+          <input type="number" id="wMillesime">
+        </div>
+        <div class="form-group">
+          <label>Couleur</label>
+          <select id="wCouleur">
+            <option>Rouge</option>
+            <option>Blanc</option>
+            <option>Rosé</option>
+            <option>Pétillant</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Quantité</label>
+          <input type="number" id="wQuantite" value="1">
+        </div>
+        <div class="form-group">
+          <label>Prix unitaire (€)</label>
+          <input type="number" step="0.5" id="wPrix">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Apogée (année)</label>
+          <input type="number" id="wApogee">
+        </div>
+        <div class="form-group">
+          <label>À boire</label>
+          <input type="text" id="wABoire" placeholder="Ex: Maintenant">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Emplacement / Cave</label>
+        <input type="text" id="wEmplacement" placeholder="Ex: Casier 2, Étagère...">
+        <div class="scroll-row" id="quickCavesRow" style="margin-top:4px;"></div>
+      </div>
+
+      <div class="form-group">
+        <label>Notes / Commentaires</label>
+        <textarea id="wCommentaire" rows="2"></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="chip" onclick="closeModal('wineModal')">Annuler</button>
+        <button class="btn-action" style="background:#DC2626; display:none;" id="btnDeleteWine" onclick="deleteCurrentWine()">Supprimer</button>
+        <button class="btn-action" onclick="saveWine()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modale Dégustation -->
+  <div class="modal-backdrop" id="degustModal">
+    <div class="modal-content">
+      <div class="modal-header">Déguster une bouteille</div>
+      <p id="degustWineName" style="font-weight:bold; margin:0;"></p>
+      <div class="form-group" style="align-items:center;">
+        <label>Note globale :</label>
+        <div id="starContainer" style="font-size:24px; cursor:pointer;">⭐⭐⭐⭐☆</div>
+      </div>
+      <div class="form-group">
+        <label>Avis & Notes de dégustation</label>
+        <textarea id="degustAvis" rows="3" placeholder="Accords, robe, tanins..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="chip" onclick="closeModal('degustModal')">Annuler</button>
+        <button class="btn-action" onclick="confirmDegustation()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modale Sommelier -->
+  <div class="modal-backdrop" id="sommelierModal">
+    <div class="modal-content">
+      <div class="modal-header">🍷 Mode Sommelier</div>
+      <div id="sommelierList"></div>
+      <div class="modal-actions">
+        <button class="chip" onclick="closeModal('sommelierModal')">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modale Configuration des Caves -->
+  <div class="modal-backdrop" id="cavesConfigModal">
+    <div class="modal-content">
+      <div class="modal-header">⚙️ Gérer les caves</div>
+      <p style="font-size:12px; color:var(--text-muted); margin:0;">
+        Personnalisez ici la liste de vos caves ou lieux de stockage (ex: Cave 1, Cave 2, Garage...) :
+      </p>
+      <div style="display:flex; gap:6px;">
+        <input type="text" id="newCaveInput" class="search-input" placeholder="Nouvelle cave...">
+        <button class="btn-action" onclick="addNewCave()">Ajouter</button>
+      </div>
+      <div id="cavesListManage" style="display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; margin-top:6px;"></div>
+      <div class="modal-actions">
+        <button class="btn-action" onclick="closeModal('cavesConfigModal')">Terminer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modale Options / Import-Export -->
+  <div class="modal-backdrop" id="menuModal">
+    <div class="modal-content">
+      <div class="modal-header">Options & Sauvegardes</div>
+      <button class="chip" style="padding:10px; font-weight:bold;" onclick="closeModal('menuModal'); openCavesConfig();">⚙️ Gérer le nom de mes caves</button>
+      <button class="chip" style="padding:10px;" onclick="exportCSV()">📄 Exporter en CSV</button>
+      <input type="file" id="csvFileInput" accept=".csv" style="display:none;" onchange="importCSV(event)">
+      <button class="chip" style="padding:10px;" onclick="document.getElementById('csvFileInput').click()">📥 Importer un CSV</button>
+      <div class="modal-actions">
+        <button class="chip" onclick="closeModal('menuModal')">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <datalist id="regionsList">
+    <option value="Alsace"><option value="Beaujolais"><option value="Bordeaux">
+    <option value="Bourgogne"><option value="Champagne"><option value="Corse">
+    <option value="Jura"><option value="Languedoc-Roussillon"><option value="Lorraine">
+    <option value="Provence"><option value="Savoie"><option value="Sud-Ouest">
+    <option value="Vallée de la Loire"><option value="Vallée du Rhône">
+  </datalist>
+
+  <script>
+    const INITIAL_VINS = [
+      {
+        id: 1, nom: "Château Fombrauges", domaine: "Château Fombrauges", region: "Bordeaux",
+        aop: "Saint-Émilion Grand Cru", millesime: 2020, couleur: "Rouge", quantite: 2,
+        prixUnitaire: 24, apogee: 2030, aBoire: "Garder en cave", emplacement: "Cave 1 - Étagère A1",
+        commentaire: "Grand vin de Bordeaux tannique et élégant.", photoUri: "", estConsomme: false, estSouhait: false,
+        noteDegustation: 0, avisDegustation: ""
+      },
+      {
+        id: 2, nom: "La cuvée du couvent", domaine: "Domaine Capmartin", region: "Sud-Ouest",
+        aop: "Madiran", millesime: 2018, couleur: "Rouge", quantite: 3,
+        prixUnitaire: 14, apogee: 2026, aBoire: "Maintenant", emplacement: "Cave 2 - Casier 2",
+        commentaire: "Très beau vin du Sud-Ouest, prêt à boire.", photoUri: "", estConsomme: false, estSouhait: false,
+        noteDegustation: 0, avisDegustation: ""
+      }
+    ];
+
+    const DISH_CATEGORIES = [
+      { id: "viande_rouge", title: "Viandes Rouges & Gibier", subtitle: "Côte de boeuf, Agneau, Magret", emoji: "🥩", colors: ["Rouge"], kw: ["Bordeaux", "Rhône", "Madiran", "Syrah", "Cabernet"] },
+      { id: "viande_blanche", title: "Volailles & Viandes Blanches", subtitle: "Poulet rôti, Veau, Porc", emoji: "🍗", colors: ["Rouge", "Blanc"], kw: ["Pinot Noir", "Bourgogne", "Loire", "Chardonnay"] },
+      { id: "poisson", title: "Poissons & Crustacés", subtitle: "Poisson grillé, Fruits de mer", emoji: "🐟", colors: ["Blanc"], kw: ["Muscadet", "Sauvignon", "Alsace", "Riesling", "Chablis"] },
+      { id: "fromage", title: "Plateau de Fromages", subtitle: "Chèvre, Comté, Roquefort", emoji: "🧀", colors: ["Blanc", "Rouge"], kw: ["Chèvre", "Sancerre", "Savennières", "Jura"] },
+      { id: "aperitif", title: "Charcuterie & Apéritif", subtitle: "Planches, Tapas, Pizza", emoji: "🍕", colors: ["Rosé", "Pétillant", "Rouge", "Blanc"], kw: ["Rosé", "Provence", "Champagne"] },
+      { id: "dessert", title: "Desserts & Gourmandises", subtitle: "Tartes aux fruits, Chocolat", emoji: "🍰", colors: ["Pétillant", "Blanc"], kw: ["Champagne", "Moelleux", "Sauternes"] }
+    ];
+
+    // Chargement des données et des caves personnalisées
+    let userCaves = JSON.parse(localStorage.getItem('macave_custom_caves')) || ["Cave 1", "Cave 2", "Charente"];
+    let vins = JSON.parse(localStorage.getItem('macave_vins')) || INITIAL_VINS;
+    let selectedTab = 0;
+    let selectedCouleur = "Toutes";
+    let selectedCave = "Toutes les caves";
+    let pretABoireOnly = false;
+    let currentEditingId = null;
+    let currentDegustingId = null;
+    let currentRating = 4;
+    let tempPhotoData = "";
+
+    function saveState() {
+      localStorage.setItem('macave_vins', JSON.stringify(vins));
+      renderApp();
+    }
+
+    function saveCavesState() {
+      localStorage.setItem('macave_custom_caves', JSON.stringify(userCaves));
+      renderApp();
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('dark');
+      localStorage.setItem('macave_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+    }
+    if (localStorage.getItem('macave_theme') === 'dark') document.body.classList.add('dark');
+
+    function switchTab(idx) {
+      selectedTab = idx;
+      document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+      document.getElementById('fabAdd').style.display = (idx === 0 || idx === 3) ? 'flex' : 'none';
+      document.getElementById('bannerStats').style.display = (idx === 2) ? 'none' : 'flex';
+      document.getElementById('filtersArea').style.display = (idx === 2) ? 'none' : 'flex';
+      renderApp();
+    }
+
+    function getStripeColor(c) {
+      switch((c || '').toLowerCase()) {
+        case 'rouge': return '#800020';
+        case 'blanc': return '#D6B512';
+        case 'rosé': case 'rose': return '#E88288';
+        case 'pétillant': case 'petillant': case 'champagne': return '#FFD700';
+        default: return '#722F37';
+      }
+    }
+
+    function isPret(v) {
+      const curYear = new Date().getFullYear();
+      return (v.apogee && v.apogee <= curYear) || (v.aBoire && v.aBoire.toLowerCase().includes("maintenant"));
+    }
+
+    function renderApp() {
+      const enCave = vins.filter(v => !v.estConsomme && !v.estSouhait);
+      const hist = vins.filter(v => v.estConsomme && !v.estSouhait);
+      const wish = vins.filter(v => v.estSouhait);
+
+      document.getElementById('countCave').innerText = enCave.reduce((s, v) => s + v.quantite, 0);
+      document.getElementById('countHist').innerText = hist.length;
+      document.getElementById('countWish').innerText = wish.length;
+
+      const main = document.getElementById('mainContainer');
+      main.innerHTML = "";
+
+      if (selectedTab === 2) {
+        renderStats(enCave, hist);
+        return;
+      }
+
+      let activeList = selectedTab === 0 ? enCave : (selectedTab === 1 ? hist : wish);
+
+      buildFilterOptions(activeList);
+
+      const q = document.getElementById('searchBox').value.toLowerCase();
+      const region = document.getElementById('regionFilter').value;
+      const sort = document.getElementById('sortFilter').value;
+
+      let filtered = activeList.filter(v => {
+        const fullTxt = `${v.nom} ${v.domaine} ${v.aop} ${v.region} ${v.millesime || ''} ${v.emplacement} ${v.couleur}`.toLowerCase();
+        const mQ = !q || fullTxt.includes(q);
+        const mCol = selectedCouleur === "Toutes" || v.couleur.toLowerCase() === selectedCouleur.toLowerCase();
+        const mReg = !region || region === "Toutes les régions" || v.region === region;
+        const mCave = selectedCave === "Toutes les caves" || (v.emplacement && v.emplacement.toLowerCase().includes(selectedCave.toLowerCase()));
+        const mDrink = !pretABoireOnly || isPret(v);
+        return mQ && mCol && mReg && mCave && mDrink;
+      });
+
+      filtered.sort((a,b) => {
+        if (sort === "nom") return a.nom.localeCompare(b.nom);
+        if (sort === "millesime_desc") return (b.millesime||0) - (a.millesime||0);
+        if (sort === "millesime_asc") return (a.millesime||9999) - (b.millesime||9999);
+        if (sort === "prix_desc") return (b.prixUnitaire||0) - (a.prixUnitaire||0);
+        if (sort === "qte_desc") return (b.quantite||0) - (a.quantite||0);
+      });
+
+      // Bannière
+      const totalBottles = enCave.reduce((s, v) => s + v.quantite, 0);
+      const totalVal = enCave.reduce((s, v) => s + (v.quantite * (v.prixUnitaire||0)), 0);
+      const readyCount = enCave.filter(isPret).reduce((s, v) => s + v.quantite, 0);
+
+      if (selectedTab === 0) {
+        document.getElementById('bannerText').innerText = `${totalBottles} bouteilles • ${Math.round(totalVal)} €`;
+        document.getElementById('filterDrinkBtn').style.display = readyCount > 0 ? 'block' : 'none';
+        document.getElementById('readyDrinkCount').innerText = readyCount;
+        document.getElementById('filterDrinkBtn').classList.toggle('active', pretABoireOnly);
+      } else if (selectedTab === 1) {
+        document.getElementById('bannerText').innerText = `${hist.length} dégustation(s)`;
+        document.getElementById('filterDrinkBtn').style.display = 'none';
+      } else {
+        document.getElementById('bannerText').innerText = `${wish.length} vin(s) à acheter`;
+        document.getElementById('filterDrinkBtn').style.display = 'none';
+      }
+
+      if (filtered.length === 0) {
+        main.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted); font-size:13px;">Aucun vin trouvé.</div>`;
+        return;
+      }
+
+      filtered.forEach(v => {
+        const card = document.createElement('div');
+        card.className = "wine-card";
+        const pret = isPret(v);
+        card.innerHTML = `
+          <div class="color-stripe" style="background:${getStripeColor(v.couleur)};"></div>
+          <div class="card-content">
+            <div class="card-photo">
+              ${v.photoUri ? `<img src="${v.photoUri}">` : `🍷`}
+            </div>
+            <div class="card-details">
+              <div class="card-title-row">
+                <div class="card-title">${v.nom}</div>
+                <div>
+                  <button class="icon-btn" style="width:24px;height:24px;font-size:12px;" onclick="duplicateWine(${v.id})" title="Dupliquer">📋</button>
+                  <button class="icon-btn" style="width:24px;height:24px;font-size:12px;" onclick="editWine(${v.id})" title="Modifier">✏️</button>
+                </div>
+              </div>
+              ${v.domaine ? `<div class="domaine">${v.domaine}</div>` : ''}
+              <div class="meta-line">
+                ${v.millesime ? `<span class="millesime-badge">${v.millesime}</span>` : ''}
+                <span>${v.couleur} • ${v.aop || v.region || '-'}</span>
+              </div>
+              ${v.emplacement ? `<div class="meta-line" style="margin-top:2px;">📍 ${v.emplacement}</div>` : ''}
+              ${pret && selectedTab === 0 ? `<div class="apogee-badge">⏰ Apogée : ${v.aBoire || v.apogee}</div>` : ''}
+              ${selectedTab === 1 && v.noteDegustation ? `
+                <div style="color:var(--star); font-size:12px; margin-top:2px;">${'★'.repeat(v.noteDegustation)}${'☆'.repeat(5-v.noteDegustation)}</div>${v.avisDegustation ? `<div style="font-size:11px; font-style:italic;">« ${v.avisDegustation} »</div>` : ''}
+              ` : ''}
+              <div class="card-bottom">
+                ${selectedTab === 0 ? `
+                  <button class="btn-action" onclick="openDegustation(${v.id})">🍷 Déguster</button>
+                  <div class="qty-control">
+                    <button class="qty-btn" onclick="changeQty(${v.id}, -1)">-</button>
+                    <span style="font-size:12px; font-weight:bold; margin:0 4px;">${v.quantite}</span>
+                    <button class="qty-btn" onclick="changeQty(${v.id}, 1)">+</button>
+                  </div>
+                ` : (selectedTab === 3 ? `
+                  <span></span>
+                  <button class="btn-action" onclick="transferWishlist(${v.id})">+ Ajouter en cave</button>
+                ` : `
+                  <span></span>
+                  <button class="btn-action" onclick="restoreCave(${v.id})">🔄 Remettre en cave</button>
+                `)}
+              </div>
+            </div>
+          </div>
+        `;
+        main.appendChild(card);
+      });
+    }
+
+    function buildFilterOptions(list) {
+      // Intégration des caves personnalisées + éventuelles caves issues des fiches
+      const otherCavesInList = [...new Set(list.map(v => v.emplacement).filter(Boolean))].filter(e => !userCaves.some(m => e.includes(m)));
+      const allCaves = ["Toutes les caves", ...userCaves, ...otherCavesInList];
+      
+      const caveCont = document.getElementById('cavesChips');
+      caveCont.innerHTML = allCaves.map(c => `
+        <button class="chip ${selectedCave === c ? 'active' : ''}" onclick="selectCave('${c}')">${c === 'Toutes les caves' ? '🏠 ' : '📍 '}${c}</button>
+      `).join('');
+
+      // Couleurs
+      const couleurs = ["Toutes", "Rouge", "Blanc", "Rosé", "Pétillant"];
+      document.getElementById('couleursChips').innerHTML = couleurs.map(c => `
+        <button class="chip ${selectedCouleur === c ? 'active' : ''}" onclick="selectCouleur('${c}')">${c}</button>
+      `).join('');
+
+      // Régions
+      const regSelect = document.getElementById('regionFilter');
+      const curReg = regSelect.value;
+      const allRegs = ["Toutes les régions", ...new Set(list.map(v => v.region).filter(Boolean))];
+      regSelect.innerHTML = allRegs.map(r => `<option value="${r}">${r}</option>`).join('');
+      if (allRegs.includes(curReg)) regSelect.value = curReg;
+    }
+
+    function selectCave(c) { selectedCave = c; renderApp(); }
+    function selectCouleur(c) { selectedCouleur = c; renderApp(); }
+    function togglePretABoire() { pretABoireOnly = !pretABoireOnly; renderApp(); }
+
+    function changeQty(id, delta) {
+      const v = vins.find(x => x.id === id);
+      if (v) {
+        v.quantite = Math.max(0, v.quantite + delta);
+        saveState();
+      }
+    }
+
+    function transferWishlist(id) {
+      const v = vins.find(x => x.id === id);
+      if (v) {
+        v.estSouhait = false;
+        v.quantite = v.quantite || 1;
+        saveState();
+      }
+    }
+
+    function restoreCave(id) {
+      const v = vins.find(x => x.id === id);
+      if (v) {
+        v.estConsomme = false;
+        v.quantite = 1;
+        saveState();
+      }
+    }
+
+    // Gestion des caves personnalisées
+    function openCavesConfig() {
+      renderCavesManager();
+      document.getElementById('cavesConfigModal').classList.add('open');
+    }
+
+    function renderCavesManager() {
+      const cont = document.getElementById('cavesListManage');
+      cont.innerHTML = userCaves.map((cave, idx) => `
+        <div class="cave-item-row">
+          <span style="font-size:13px; font-weight:600;">📍 ${cave}</span>
+          <button class="icon-btn" style="width:26px; height:26px; color:#DC2626;" onclick="deleteCave(${idx})" title="Supprimer">✕</button>
+        </div>
+      `).join('');
+    }
+
+    function addNewCave() {
+      const inp = document.getElementById('newCaveInput');
+      const val = inp.value.trim();
+      if (!val) return;
+      if (!userCaves.includes(val)) {
+        userCaves.push(val);
+        saveCavesState();
+        renderCavesManager();
+      }
+      inp.value = "";
+    }
+
+    function deleteCave(idx) {
+      if (confirm(`Supprimer "${userCaves[idx]}" de vos caves favorites ?`)) {
+        userCaves.splice(idx, 1);
+        saveCavesState();
+        renderCavesManager();
+      }
+    }
+
+    function renderQuickCavesChips(currentVal) {
+      const cont = document.getElementById('quickCavesRow');
+      cont.innerHTML = userCaves.map(cave => {
+        return `<button type="button" class="chip" onclick="applyCaveToForm('${cave}')">📍 ${cave}</button>`;
+      }).join('');
+    }
+
+    function applyCaveToForm(caveName) {
+      const inp = document.getElementById('wEmplacement');
+      if (!inp.value.trim()) {
+        inp.value = caveName;
+      } else if (!inp.value.includes(caveName)) {
+        inp.value = `${caveName} - ${inp.value}`;
+      }
+    }
+
+    // Modal Vin
+    function openAddDialog() {
+      currentEditingId = null;
+      tempPhotoData = "";
+      document.getElementById('modalTitle').innerText = selectedTab === 3 ? "Ajouter à la Wishlist" : "Ajouter un vin";
+      document.getElementById('btnDeleteWine').style.display = 'none';
+      document.getElementById('wEstSouhait').checked = (selectedTab === 3);
+      document.getElementById('wNom').value = "";
+      document.getElementById('wDomaine').value = "";
+      document.getElementById('wRegion').value = "";
+      document.getElementById('wAop').value = "";
+      document.getElementById('wMillesime').value = "";
+      document.getElementById('wCouleur').value = "Rouge";
+      document.getElementById('wQuantite').value = selectedTab === 3 ? "0" : "1";
+      document.getElementById('wPrix').value = "";
+      document.getElementById('wApogee').value = "";
+      document.getElementById('wABoire').value = "";
+      document.getElementById('wEmplacement').value = "";
+      document.getElementById('wCommentaire').value = "";
+      document.getElementById('winePhotoPreview').style.display = 'none';
+      renderQuickCavesChips("");
+      document.getElementById('wineModal').classList.add('open');
+    }
+
+    function editWine(id) {
+      const v = vins.find(x => x.id === id);
+      if (!v) return;
+      currentEditingId = id;
+      tempPhotoData = v.photoUri || "";
+      document.getElementById('modalTitle').innerText = "Modifier le vin";
+      document.getElementById('btnDeleteWine').style.display = 'block';
+      document.getElementById('wEstSouhait').checked = v.estSouhait;
+      document.getElementById('wNom').value = v.nom;
+      document.getElementById('wDomaine').value = v.domaine || '';
+      document.getElementById('wRegion').value = v.region || '';
+      document.getElementById('wAop').value = v.aop || '';
+      document.getElementById('wMillesime').value = v.millesime || '';
+      document.getElementById('wCouleur').value = v.couleur || 'Rouge';
+      document.getElementById('wQuantite').value = v.quantite;
+      document.getElementById('wPrix').value = v.prixUnitaire || '';
+      document.getElementById('wApogee').value = v.apogee || '';
+      document.getElementById('wABoire').value = v.aBoire || '';
+      document.getElementById('wEmplacement').value = v.emplacement || '';
+      document.getElementById('wCommentaire').value = v.commentaire || '';
+      if (v.photoUri) {
+        document.getElementById('winePhotoPreview').src = v.photoUri;
+        document.getElementById('winePhotoPreview').style.display = 'block';
+      } else {
+        document.getElementById('winePhotoPreview').style.display = 'none';
+      }
+      renderQuickCavesChips(v.emplacement || "");
+      document.getElementById('wineModal').classList.add('open');
+    }
+
+    function duplicateWine(id) {
+      const v = vins.find(x => x.id === id);
+      if (!v) return;
+      editWine(id);
+      currentEditingId = null;
+      document.getElementById('modalTitle').innerText = "Dupliquer le vin";
+      document.getElementById('btnDeleteWine').style.display = 'none';
+    }
+
+    function handlePhotoUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const r = new FileReader();
+      r.onload = ev => {
+        tempPhotoData = ev.target.result;
+        document.getElementById('winePhotoPreview').src = tempPhotoData;
+        document.getElementById('winePhotoPreview').style.display = 'block';
+      };
+      r.readAsDataURL(file);
+    }
+
+    function saveWine() {
+      const nom = document.getElementById('wNom').value.trim();
+      if (!nom) return alert("Le nom est obligatoire !");
+
+      const item = {
+        id: currentEditingId || Date.now(),
+        nom: nom,
+        domaine: document.getElementById('wDomaine').value.trim(),
+        region: document.getElementById('wRegion').value.trim(),
+        aop: document.getElementById('wAop').value.trim(),
+        millesime: parseInt(document.getElementById('wMillesime').value) || null,
+        couleur: document.getElementById('wCouleur').value,
+        quantite: parseInt(document.getElementById('wQuantite').value) || 0,
+        prixUnitaire: parseFloat(document.getElementById('wPrix').value) || 0,
+        apogee: parseInt(document.getElementById('wApogee').value) || null,
+        aBoire: document.getElementById('wABoire').value.trim(),
+        emplacement: document.getElementById('wEmplacement').value.trim(),
+        commentaire: document.getElementById('wCommentaire').value.trim(),
+        estSouhait: document.getElementById('wEstSouhait').checked,
+        estConsomme: false,
+        photoUri: tempPhotoData,
+        noteDegustation: 0,
+        avisDegustation: ""
+      };
+
+      if (currentEditingId) {
+        const idx = vins.findIndex(x => x.id === currentEditingId);
+        if (idx !== -1) vins[idx] = { ...vins[idx], ...item };
+      } else {
+        vins.unshift(item);
+      }
+
+      closeModal('wineModal');
+      saveState();
+    }
+
+    function deleteCurrentWine() {
+      if (confirm("Supprimer ce vin ?")) {
+        vins = vins.filter(x => x.id !== currentEditingId);
+        closeModal('wineModal');
+        saveState();
+      }
+    }
+
+    // Dégustation
+    function openDegustation(id) {
+      const v = vins.find(x => x.id === id);
+      if (!v) return;
+      currentDegustingId = id;
+      currentRating = 4;
+      document.getElementById('degustWineName').innerText = v.nom;
+      document.getElementById('degustAvis').value = "";
+      renderStars();
+      document.getElementById('degustModal').classList.add('open');
+    }
+
+    function renderStars() {
+      document.getElementById('starContainer').innerHTML = [1,2,3,4,5].map(i => `
+        <span onclick="setRating(${i})" style="color:${i<=currentRating?'var(--star)':'var(--border)'}">★</span>
+      `).join('');
+    }
+    function setRating(r) { currentRating = r; renderStars(); }
+
+    function confirmDegustation() {
+      const v = vins.find(x => x.id === currentDegustingId);
+      if (v) {
+        const avis = document.getElementById('degustAvis').value.trim();
+        if (v.quantite > 1) {
+          v.quantite--;
+          vins.push({
+            ...v, id: Date.now(), quantite: 1, estConsomme: true,
+            noteDegustation: currentRating, avisDegustation: avis
+          });
+        } else {
+          v.quantite = 0;
+          v.estConsomme = true;
+          v.noteDegustation = currentRating;
+          v.avisDegustation = avis;
+        }
+        saveState();
+      }
+      closeModal('degustModal');
+    }
+
+    // Statistiques
+    function renderStats(enCave, hist) {
+      const main = document.getElementById('mainContainer');
+      const totalBottles = enCave.reduce((s, v) => s + v.quantite, 0);
+      const totalVal = enCave.reduce((s, v) => s + (v.quantite * (v.prixUnitaire||0)), 0);
+      const avgPrice = totalBottles > 0 ? (totalVal / totalBottles).toFixed(1) : 0;
+
+      const colorsCount = { "Rouge": 0, "Blanc": 0, "Rosé": 0, "Pétillant": 0 };
+      enCave.forEach(v => {
+        const c = v.couleur || 'Rouge';
+        if (colorsCount[c] !== undefined) colorsCount[c] += v.quantite;
+      });
+
+      main.innerHTML = `
+        <div style="font-weight:bold; color:var(--primary); font-size:15px;">💰 Bilan Financier</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div class="stat-card">
+            <span style="font-size:11px; color:var(--text-muted);">Valeur Totale</span>
+            <span class="stat-val">${Math.round(totalVal)} €</span>
+            <span style="font-size:11px;">${totalBottles} bouteilles</span>
+          </div>
+          <div class="stat-card">
+            <span style="font-size:11px; color:var(--text-muted);">Prix Moyen</span>
+            <span class="stat-val">${avgPrice} €</span>
+            <span style="font-size:11px;">Par bouteille</span>
+          </div>
+        </div>
+
+        <div style="font-weight:bold; color:var(--primary); font-size:15px; margin-top:10px;">🍷 Couleurs</div>
+        <div class="stat-card">
+          ${Object.entries(colorsCount).map(([col, cnt]) => `
+            <div style="margin-bottom:6px;">
+              <div style="display:flex; justify-content:space-between; font-size:12px;">
+                <span>${col}</span>
+                <b>${cnt} btl (${totalBottles ? Math.round(cnt/totalBottles*100) : 0}%)</b>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" style="width:${totalBottles?cnt/totalBottles*100:0}\%; background:${getStripeColor(col)};"></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    // Sommelier
+    function openSommelier() {
+      const enCave = vins.filter(v => !v.estConsomme && !v.estSouhait);
+      const list = document.getElementById('sommelierList');
+      list.innerHTML = DISH_CATEGORIES.map(cat => `
+        <div class="sommelier-cat" onclick="suggestWineForCategory('${cat.id}')">
+          <span style="font-size:24px;">${cat.emoji}</span>
+          <div>
+            <div style="font-size:13px; font-weight:bold;">${cat.title}</div>
+            <div style="font-size:11px; color:var(--text-muted);">${cat.subtitle}</div>
+          </div>
+        </div>
+      `).join('');
+      document.getElementById('sommelierModal').classList.add('open');
+    }
+
+    function suggestWineForCategory(catId) {
+      const cat = DISH_CATEGORIES.find(c => c.id === catId);
+      const enCave = vins.filter(v => !v.estConsomme && !v.estSouhait);
+
+      const scored = enCave.map(v => {
+        let score = 0;
+        if (cat.colors.some(c => c.toLowerCase() === v.couleur.toLowerCase())) score += 50;
+        const txt = `${v.nom} ${v.domaine} ${v.aop} ${v.region}`.toLowerCase();
+        if (cat.kw.some(k => txt.includes(k.toLowerCase()))) score += 30;
+        if (isPret(v)) score += 20;
+        return { vin: v, score };
+      }).filter(x => x.score > 0).sort((a,b) => b.score - a.score);
+
+      const list = document.getElementById('sommelierList');
+      if (scored.length === 0) {
+        list.innerHTML = `<p style="font-size:13px; color:var(--text-muted);">Aucune bouteille idéale trouvée pour ce plat.</p>`;
+      } else {
+        list.innerHTML = `
+          <button class="chip" onclick="openSommelier()" style="margin-bottom:8px;">← Retour aux plats</button>
+          ${scored.slice(0, 5).map(s => `
+            <div class="wine-card" style="margin-bottom:8px; padding:10px; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <span class="apogee-badge">${s.score >= 80 ? '⭐ Accord Idéal' : '🍷 Bon Accord'}</span>
+                <div style="font-size:13px; font-weight:bold; margin-top:4px;">${s.vin.nom}</div>
+                <div style="font-size:11px; color:var(--text-muted);">${s.vin.couleur} •${s.vin.millesime || '-'}</div>
+              </div>
+              <button class="btn-action" onclick="closeModal('sommelierModal'); openDegustation(${s.vin.id});">Déguster</button>
+            </div>
+          `).join('')}
+        `;
+      }
+    }
+
+    // Import / Export
+    function openMenu() { document.getElementById('menuModal').classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    function exportCSV() {
+      let csv = "Nom;Domaine;Région;AOP;Millésime;Couleur;Quantité;Prix unitaire (€);Valeur (€);Apogée;À boire;Emplacement;Commentaire;Note;Avis;Statut\n";
+      vins.forEach(v => {
+        const statut = v.estSouhait ? "Wishlist" : (v.estConsomme ? "Consommé" : "En cave");
+        csv += `"${v.nom}";"${v.domaine||''}";"${v.region||''}";"${v.aop||''}";${v.millesime||''};"${v.couleur}";${v.quantite};${v.prixUnitaire||0};${(v.quantite*(v.prixUnitaire||0))};${v.apogee||''};"${v.aBoire||''}";"${v.emplacement||''}";"${(v.commentaire||'').replace(/\n/g, ' ')};${v.noteDegustation||0};"${(v.avisDegustation||'').replace(/\n/g, ' ')};"${statut}"\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Ma_cave_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      closeModal('menuModal');
+    }
+
+    function importCSV(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const lines = ev.target.result.trim().split('\n');
+        if (lines.length < 2) return alert("Fichier CSV invalide");
+        const sep = lines[0].includes(';') ? ';' : ',';
+        const newVins = [];
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(sep).map(c => c.replace(/^"|"$/g, '').trim());
+          if (cols[0]) {
+            newVins.push({
+              id: Date.now() + i,
+              nom: cols[0],
+              domaine: cols[1] || '',
+              region: cols[2] || '',
+              aop: cols[3] || '',
+              millesime: parseInt(cols[4]) || null,
+              couleur: cols[5] || 'Rouge',
+              quantite: parseInt(cols[6]) || 1,
+              prixUnitaire: parseFloat(cols[7]) || 0,
+              apogee: parseInt(cols[9]) || null,
+              aBoire: cols[10] || '',
+              emplacement: cols[11] || '',
+              commentaire: cols[12] || '',
+              noteDegustation: parseFloat(cols[13]) || 0,
+              avisDegustation: cols[14] || '',
+              estConsomme: (cols[15] || '').includes('Consommé'),
+              estSouhait: (cols[15] || '').includes('Wishlist'),
+              photoUri: ""
+            });
+          }
+        }
+        if (confirm(`Importer ${newVins.length} bouteilles ? Cliquez sur Annuler pour remplacer votre cave actuelle, ou OK pour les ajouter.`)) {
+          vins = [...vins, ...newVins];
+        } else {
+          vins = newVins;
+        }
+        saveState();
+        closeModal('menuModal');
+      };
+      reader.readAsText(file);
+    }
+
+    // Lancement
+    renderApp();
+  </script>
+</body>
+</html>
