@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>🍷 Ma Cave à Vin</title>
+  <!-- Bibliothèque JSZip pour la compression et décompression d'archives -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     :root {
       --primary: #722F37;
@@ -263,9 +265,12 @@
       <div class="modal-header" id="modalTitle">Ajouter un vin</div>
       
       <div class="form-group" style="text-align: center;">
-        <label>Photo du vin</label>
+        <label>Photo de la bouteille</label>
         <input type="file" id="winePhotoInput" accept="image/*" onchange="handlePhotoUpload(event)">
-        <img id="winePhotoPreview" style="display:none; max-height:80px; object-fit:contain; border-radius:6px; margin:4px auto 0;">
+        <div style="position:relative; display:inline-block; margin:4px auto 0;">
+          <img id="winePhotoPreview" style="display:none; max-height:90px; border-radius:8px; object-fit:contain; border:1px solid var(--border);">
+          <button id="btnRemovePhoto" type="button" onclick="removeCurrentPhoto()" style="display:none; position:absolute; top:-6px; right:-6px; background:#DC2626; color:white; border:none; border-radius:50%; width:20px; height:20px; font-size:12px; cursor:pointer;">✕</button>
+        </div>
       </div>
 
       <div class="form-group">
@@ -386,7 +391,7 @@
     <div class="modal-content">
       <div class="modal-header">⚙️ Gérer les caves</div>
       <p style="font-size:12px; color:var(--text-muted); margin:0;">
-        Personnalisez ici la liste de vos caves ou lieux de stockage (ex: Cave 1, Cave 2, Garage...) :
+        Personnalisez vos caves ou lieux de stockage (ex: Cave 1, Cave 2, Garage...) :
       </p>
       <div style="display:flex; gap:6px;">
         <input type="text" id="newCaveInput" class="search-input" placeholder="Nouvelle cave...">
@@ -399,14 +404,16 @@
     </div>
   </div>
 
-  <!-- Modale Options / Import-Export -->
+  <!-- Modale Options & Sauvegardes -->
   <div class="modal-backdrop" id="menuModal">
     <div class="modal-content">
       <div class="modal-header">Options & Sauvegardes</div>
       <button class="chip" style="padding:10px; font-weight:bold;" onclick="closeModal('menuModal'); openCavesConfig();">⚙️ Gérer le nom de mes caves</button>
-      <button class="chip" style="padding:10px;" onclick="exportCSV()">📄 Exporter en CSV</button>
-      <input type="file" id="csvFileInput" accept=".csv" style="display:none;" onchange="importCSV(event)">
-      <button class="chip" style="padding:10px;" onclick="document.getElementById('csvFileInput').click()">📥 Importer un CSV</button>
+      <button class="chip" style="padding:10px; font-weight:bold; background:var(--primary-container); color:var(--on-primary-container);" onclick="exportZIP()">📦 Sauvegarde complète ZIP (avec photos)</button>
+      <button class="chip" style="padding:10px;" onclick="exportCSV()">📄 Exporter CSV simple (sans photos)</button>
+      
+      <input type="file" id="restoreFileInput" accept=".zip,.csv" style="display:none;" onchange="handleRestoreFile(event)">
+      <button class="chip" style="padding:10px;" onclick="document.getElementById('restoreFileInput').click()">📥 Restaurer une sauvegarde (ZIP ou CSV)</button>
       <div class="modal-actions">
         <button class="chip" onclick="closeModal('menuModal')">Fermer</button>
       </div>
@@ -448,7 +455,6 @@
       { id: "dessert", title: "Desserts & Gourmandises", subtitle: "Tartes aux fruits, Chocolat", emoji: "🍰", colors: ["Pétillant", "Blanc"], kw: ["Champagne", "Moelleux", "Sauternes"] }
     ];
 
-    // Chargement des données et des caves personnalisées
     let userCaves = JSON.parse(localStorage.getItem('macave_custom_caves')) || ["Cave 1", "Cave 2", "Charente"];
     let vins = JSON.parse(localStorage.getItem('macave_vins')) || INITIAL_VINS;
     let selectedTab = 0;
@@ -461,7 +467,11 @@
     let tempPhotoData = "";
 
     function saveState() {
-      localStorage.setItem('macave_vins', JSON.stringify(vins));
+      try {
+        localStorage.setItem('macave_vins', JSON.stringify(vins));
+      } catch (e) {
+        alert("Attention : La mémoire locale est saturée à cause des photos. Pensez à exporter votre cave en ZIP régulièrement.");
+      }
       renderApp();
     }
 
@@ -543,7 +553,6 @@
         if (sort === "qte_desc") return (b.quantite||0) - (a.quantite||0);
       });
 
-      // Bannière
       const totalBottles = enCave.reduce((s, v) => s + v.quantite, 0);
       const totalVal = enCave.reduce((s, v) => s + (v.quantite * (v.prixUnitaire||0)), 0);
       const readyCount = enCave.filter(isPret).reduce((s, v) => s + v.quantite, 0);
@@ -618,7 +627,6 @@
     }
 
     function buildFilterOptions(list) {
-      // Intégration des caves personnalisées + éventuelles caves issues des fiches
       const otherCavesInList = [...new Set(list.map(v => v.emplacement).filter(Boolean))].filter(e => !userCaves.some(m => e.includes(m)));
       const allCaves = ["Toutes les caves", ...userCaves, ...otherCavesInList];
       
@@ -627,13 +635,11 @@
         <button class="chip ${selectedCave === c ? 'active' : ''}" onclick="selectCave('${c}')">${c === 'Toutes les caves' ? '🏠 ' : '📍 '}${c}</button>
       `).join('');
 
-      // Couleurs
       const couleurs = ["Toutes", "Rouge", "Blanc", "Rosé", "Pétillant"];
       document.getElementById('couleursChips').innerHTML = couleurs.map(c => `
         <button class="chip ${selectedCouleur === c ? 'active' : ''}" onclick="selectCouleur('${c}')">${c}</button>
       `).join('');
 
-      // Régions
       const regSelect = document.getElementById('regionFilter');
       const curReg = regSelect.value;
       const allRegs = ["Toutes les régions", ...new Set(list.map(v => v.region).filter(Boolean))];
@@ -723,7 +729,7 @@
       }
     }
 
-    // Modal Vin
+    // Modal Vin & Gestion des Photos compressées
     function openAddDialog() {
       currentEditingId = null;
       tempPhotoData = "";
@@ -742,7 +748,9 @@
       document.getElementById('wABoire').value = "";
       document.getElementById('wEmplacement').value = "";
       document.getElementById('wCommentaire').value = "";
+      document.getElementById('winePhotoInput').value = "";
       document.getElementById('winePhotoPreview').style.display = 'none';
+      document.getElementById('btnRemovePhoto').style.display = 'none';
       renderQuickCavesChips("");
       document.getElementById('wineModal').classList.add('open');
     }
@@ -767,11 +775,15 @@
       document.getElementById('wABoire').value = v.aBoire || '';
       document.getElementById('wEmplacement').value = v.emplacement || '';
       document.getElementById('wCommentaire').value = v.commentaire || '';
+      document.getElementById('winePhotoInput').value = "";
+
       if (v.photoUri) {
         document.getElementById('winePhotoPreview').src = v.photoUri;
         document.getElementById('winePhotoPreview').style.display = 'block';
+        document.getElementById('btnRemovePhoto').style.display = 'block';
       } else {
         document.getElementById('winePhotoPreview').style.display = 'none';
+        document.getElementById('btnRemovePhoto').style.display = 'none';
       }
       renderQuickCavesChips(v.emplacement || "");
       document.getElementById('wineModal').classList.add('open');
@@ -786,16 +798,49 @@
       document.getElementById('btnDeleteWine').style.display = 'none';
     }
 
+    function removeCurrentPhoto() {
+      tempPhotoData = "";
+      document.getElementById('winePhotoPreview').style.display = 'none';
+      document.getElementById('btnRemovePhoto').style.display = 'none';
+      document.getElementById('winePhotoInput').value = "";
+    }
+
+    // Compression de la photo pour économiser la mémoire locale
     function handlePhotoUpload(e) {
       const file = e.target.files[0];
       if (!file) return;
-      const r = new FileReader();
-      r.onload = ev => {
-        tempPhotoData = ev.target.result;
-        document.getElementById('winePhotoPreview').src = tempPhotoData;
-        document.getElementById('winePhotoPreview').style.display = 'block';
+
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 800; // max 800px
+
+          if (width > height && width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Qualité JPEG 0.7 (très léger et net)
+          tempPhotoData = canvas.toDataURL('image/jpeg', 0.7);
+          document.getElementById('winePhotoPreview').src = tempPhotoData;
+          document.getElementById('winePhotoPreview').style.display = 'block';
+          document.getElementById('btnRemovePhoto').style.display = 'block';
+        };
+        img.src = ev.target.result;
       };
-      r.readAsDataURL(file);
+      reader.readAsDataURL(file);
     }
 
     function saveWine() {
@@ -976,9 +1021,47 @@
       }
     }
 
-    // Import / Export
     function openMenu() { document.getElementById('menuModal').classList.add('open'); }
     function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    // ==========================================
+    // EXPORT ET IMPORT ZIP & CSV AVEC PHOTOS
+    // ==========================================
+
+    async function exportZIP() {
+      if (typeof JSZip === "undefined") {
+        alert("Chargement de l'outil de compression en cours... Réessayez dans quelques secondes.");
+        return;
+      }
+
+      const zip = new JSZip();
+      const photosFolder = zip.folder("photos");
+
+      let csv = "Nom;Domaine;Région;AOP;Millésime;Couleur;Quantité;Prix unitaire (€);Valeur (€);Apogée;À boire;Emplacement;Commentaire;Note;Avis;Statut;PhotoPath\n";
+
+      vins.forEach((v, idx) => {
+        const statut = v.estSouhait ? "Wishlist" : (v.estConsomme ? "Consommé" : "En cave");
+        let photoPath = "";
+
+        if (v.photoUri && v.photoUri.startsWith("data:image")) {
+          const photoFileName = `photo_${idx + 1}_${Date.now()}.jpg`;
+          const base64Data = v.photoUri.split(',')[1];
+          photosFolder.file(photoFileName, base64Data, { base64: true });
+          photoPath = `photos/${photoFileName}`;
+        }
+
+        csv += `"${v.nom}";"${v.domaine||''}";"${v.region||''}";"${v.aop||''}";${v.millesime||''};"${v.couleur}";${v.quantite};${v.prixUnitaire||0};${(v.quantite*(v.prixUnitaire||0))};${v.apogee||''};"${v.aBoire||''}";"${v.emplacement||''}";"${(v.commentaire||'').replace(/\n/g, ' ')};${v.noteDegustation||0};"${(v.avisDegustation||'').replace(/\n/g, ' ')};"${statut}";"${photoPath}"\n`;
+      });
+
+      zip.file("cave_backup.csv", csv);
+
+      const content = await zip.generateAsync({ type: "blob" });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(content);
+      a.download = `Ma_cave_${new Date().toISOString().slice(0,10)}.zip`;
+      a.click();
+      closeModal('menuModal');
+    }
 
     function exportCSV() {
       let csv = "Nom;Domaine;Région;AOP;Millésime;Couleur;Quantité;Prix unitaire (€);Valeur (€);Apogée;À boire;Emplacement;Commentaire;Note;Avis;Statut\n";
@@ -994,52 +1077,104 @@
       closeModal('menuModal');
     }
 
-    function importCSV(e) {
+    async function handleRestoreFile(e) {
       const file = e.target.files[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = ev => {
-        const lines = ev.target.result.trim().split('\n');
-        if (lines.length < 2) return alert("Fichier CSV invalide");
-        const sep = lines[0].includes(';') ? ';' : ',';
-        const newVins = [];
-        for (let i = 1; i < lines.length; i++) {
-          const cols = lines[i].split(sep).map(c => c.replace(/^"|"$/g, '').trim());
-          if (cols[0]) {
-            newVins.push({
-              id: Date.now() + i,
-              nom: cols[0],
-              domaine: cols[1] || '',
-              region: cols[2] || '',
-              aop: cols[3] || '',
-              millesime: parseInt(cols[4]) || null,
-              couleur: cols[5] || 'Rouge',
-              quantite: parseInt(cols[6]) || 1,
-              prixUnitaire: parseFloat(cols[7]) || 0,
-              apogee: parseInt(cols[9]) || null,
-              aBoire: cols[10] || '',
-              emplacement: cols[11] || '',
-              commentaire: cols[12] || '',
-              noteDegustation: parseFloat(cols[13]) || 0,
-              avisDegustation: cols[14] || '',
-              estConsomme: (cols[15] || '').includes('Consommé'),
-              estSouhait: (cols[15] || '').includes('Wishlist'),
-              photoUri: ""
-            });
+
+      if (file.name.endsWith('.zip')) {
+        await restoreFromZIP(file);
+      } else {
+        restoreFromCSV(file);
+      }
+      closeModal('menuModal');
+    }
+
+    async function restoreFromZIP(file) {
+      try {
+        const zip = await JSZip.loadAsync(file);
+        let csvText = null;
+
+        // Trouver le fichier CSV dans l'archive
+        for (let filename of Object.keys(zip.files)) {
+          if (filename.toLowerCase().endsWith('.csv')) {
+            csvText = await zip.files[filename].async("string");
+            break;
           }
         }
-        if (confirm(`Importer ${newVins.length} bouteilles ? Cliquez sur Annuler pour remplacer votre cave actuelle, ou OK pour les ajouter.`)) {
-          vins = [...vins, ...newVins];
-        } else {
-          vins = newVins;
+
+        if (!csvText) {
+          alert("Erreur : Aucun fichier CSV trouvé dans l'archive ZIP.");
+          return;
         }
-        saveState();
-        closeModal('menuModal');
+
+        // Extraire les photos
+        const photoMap = {};
+        for (let filename of Object.keys(zip.files)) {
+          if (filename.toLowerCase().startsWith('photos/') && !zip.files[filename].dir) {
+            const base64 = await zip.files[filename].async("base64");
+            photoMap[filename] = `data:image/jpeg;base64,${base64}`;
+          }
+        }
+
+        parseAndApplyCsv(csvText, photoMap);
+      } catch (err) {
+        console.error(err);
+        alert("Erreur lors de la lecture du fichier ZIP.");
+      }
+    }
+
+    function restoreFromCSV(file) {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        parseAndApplyCsv(ev.target.result, {});
       };
       reader.readAsText(file);
     }
 
-    // Lancement
+    function parseAndApplyCsv(text, photoMap) {
+      const lines = text.trim().split('\n');
+      if (lines.length < 2) return alert("Fichier CSV invalide");
+      const sep = lines[0].includes(';') ? ';' : ',';
+      const newVins = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(sep).map(c => c.replace(/^"|"$/g, '').trim());
+        if (cols[0]) {
+          const photoRel = cols[16] || "";
+          const resolvedPhoto = photoMap[photoRel] || "";
+
+          newVins.push({
+            id: Date.now() + i,
+            nom: cols[0],
+            domaine: cols[1] || '',
+            region: cols[2] || '',
+            aop: cols[3] || '',
+            millesime: parseInt(cols[4]) || null,
+            couleur: cols[5] || 'Rouge',
+            quantite: parseInt(cols[6]) || 1,
+            prixUnitaire: parseFloat(cols[7]) || 0,
+            apogee: parseInt(cols[9]) || null,
+            aBoire: cols[10] || '',
+            emplacement: cols[11] || '',
+            commentaire: cols[12] || '',
+            noteDegustation: parseFloat(cols[13]) || 0,
+            avisDegustation: cols[14] || '',
+            estConsomme: (cols[15] || '').includes('Consommé'),
+            estSouhait: (cols[15] || '').includes('Wishlist'),
+            photoUri: resolvedPhoto
+          });
+        }
+      }
+
+      if (confirm(`Importer ${newVins.length} bouteilles ?\n\n• Cliquez sur OK pour ajouter à la cave existante.\n• Cliquez sur Annuler pour remplacer intégralement la cave.`)) {
+        vins = [...vins, ...newVins];
+      } else {
+        vins = newVins;
+      }
+      saveState();
+    }
+
+    // Lancement de l'application
     renderApp();
   </script>
 </body>
