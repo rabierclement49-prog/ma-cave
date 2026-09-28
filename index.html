@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>🍷 Ma Cave à Vin</title>
-  <!-- Bibliothèque JSZip pour la compression et décompression d'archives -->
+  <!-- JSZip pour export/import avec photos -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     :root {
@@ -60,6 +60,7 @@
       justify-content: space-between;
       align-items: center;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      flex-shrink: 0;
     }
     header h1 { margin: 0; font-size: 18px; font-weight: 800; }
     .header-actions { display: flex; gap: 8px; }
@@ -73,6 +74,7 @@
       display: flex;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
     }
     .tab {
       flex: 1; text-align: center; padding: 10px 4px; font-size: 11px;
@@ -88,6 +90,7 @@
       background: var(--surface-variant);
       padding: 6px 14px; font-size: 12px; font-weight: 600;
       display: flex; justify-content: space-between; align-items: center;
+      flex-shrink: 0;
     }
     .badge-btn {
       background: #E8F5E9; color: var(--success); border: 1px solid #C8E6C9;
@@ -98,6 +101,7 @@
     .filters-bar {
       padding: 8px 12px; display: flex; flex-direction: column; gap: 6px;
       background: var(--surface); border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
     }
     .search-input {
       width: 100%; padding: 8px 12px; border-radius: 8px;
@@ -124,52 +128,59 @@
       flex-direction: column; gap: 10px;
     }
 
+    /* Correction majeure : empêche l'écrasement des cartes */
     .wine-card {
-      background: var(--surface); border-radius: 12px; display: flex;
-      overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      background: var(--surface);
+      border-radius: 12px;
+      display: flex;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
       border: 1px solid var(--border);
+      flex-shrink: 0;
+      min-height: 105px;
     }
-    .color-stripe { width: 5px; flex-shrink: 0; }
-    .card-content { flex: 1; padding: 10px; display: flex; gap: 10px; }
+    .color-stripe { width: 6px; flex-shrink: 0; }
+    .card-content { flex: 1; padding: 10px; display: flex; gap: 12px; min-width: 0; }
     .card-photo {
-      width: 60px; height: 60px; border-radius: 8px; background: var(--surface-variant);
-      display: flex; align-items: center; justify-content: center; font-size: 24px;
-      overflow: hidden; flex-shrink: 0;
+      width: 68px; height: 68px; min-width: 68px; min-height: 68px;
+      border-radius: 8px; background: var(--surface-variant);
+      display: flex; align-items: center; justify-content: center; font-size: 26px;
+      overflow: hidden; flex-shrink: 0; align-self: flex-start;
     }
     .card-photo img { width: 100%; height: 100%; object-fit: cover; }
-    .card-details { flex: 1; min-width: 0; }
-    .card-title-row { display: flex; justify-content: space-between; align-items: flex-start; }
-    .card-title { font-size: 14px; font-weight: 700; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .domaine { font-size: 12px; color: var(--text-muted); margin: 2px 0; }
-    .meta-line { font-size: 11px; color: var(--text-muted); display: flex; gap: 4px; align-items: center; }
+    .card-details { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; }
+    .card-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 4px; }
+    .card-title { font-size: 14px; font-weight: 700; margin: 0; white-space: normal; line-height: 1.2; }
+    .domaine { font-size: 12px; color: var(--text-muted); margin: 2px 0 4px 0; }
+    .meta-line { font-size: 11px; color: var(--text-muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
     .millesime-badge {
       background: #FFE082; color: #5D4037; font-weight: bold;
-      padding: 1px 4px; border-radius: 4px; font-size: 10px;
+      padding: 1px 5px; border-radius: 4px; font-size: 10px;
     }
     .apogee-badge {
       display: inline-block; background: var(--primary-container); color: var(--on-primary-container);
-      font-size: 10px; font-weight: bold; border-radius: 4px; padding: 2px 5px; margin-top: 4px;
+      font-size: 10px; font-weight: bold; border-radius: 4px; padding: 2px 6px; margin-top: 4px; width: fit-content;
     }
     .card-bottom {
-      display: flex; justify-content: space-between; align-items: center; margin-top: 6px;
+      display: flex; justify-content: space-between; align-items: center; margin-top: 8px; flex-wrap: wrap; gap: 6px;
     }
     .qty-control {
       display: flex; align-items: center; background: var(--surface-variant);
-      border-radius: 12px; padding: 2px 4px;
+      border-radius: 12px; padding: 2px 6px;
     }
     .qty-btn {
-      background: none; border: none; color: var(--text); font-size: 14px;
-      font-weight: bold; width: 22px; height: 22px; cursor: pointer;
+      background: none; border: none; color: var(--text); font-size: 15px;
+      font-weight: bold; width: 24px; height: 24px; cursor: pointer;
     }
     .btn-action {
       background: var(--primary); color: white; border: none; border-radius: 6px;
-      padding: 4px 8px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px;
+      padding: 5px 10px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;
     }
 
     .fab {
       position: fixed; bottom: 20px; right: 20px; width: 52px; height: 52px;
       border-radius: 26px; background: var(--primary); color: white; border: none;
-      font-size: 24px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); cursor: pointer;
+      font-size: 24px; box-shadow: 0 4px 8px rgba(0,0,0,0.25); cursor: pointer;
       display: flex; align-items: center; justify-content: center; z-index: 10;
     }
 
@@ -239,9 +250,7 @@
 
   <div class="filters-bar" id="filtersArea">
     <input type="text" class="search-input" id="searchBox" placeholder="Rechercher un vin, domaine, cave..." oninput="renderApp()">
-    
     <div class="scroll-row" id="cavesChips"></div>
-
     <div class="scroll-row">
       <div id="couleursChips" style="display:flex; gap:6px;"></div>
       <select class="select-chip" id="regionFilter" onchange="renderApp()"></select>
@@ -391,7 +400,7 @@
     <div class="modal-content">
       <div class="modal-header">⚙️ Gérer les caves</div>
       <p style="font-size:12px; color:var(--text-muted); margin:0;">
-        Personnalisez vos caves ou lieux de stockage (ex: Cave 1, Cave 2, Garage...) :
+        Personnalisez vos caves ou lieux de stockage :
       </p>
       <div style="display:flex; gap:6px;">
         <input type="text" id="newCaveInput" class="search-input" placeholder="Nouvelle cave...">
@@ -414,6 +423,11 @@
       
       <input type="file" id="restoreFileInput" accept=".zip,.csv" style="display:none;" onchange="handleRestoreFile(event)">
       <button class="chip" style="padding:10px;" onclick="document.getElementById('restoreFileInput').click()">📥 Restaurer une sauvegarde (ZIP ou CSV)</button>
+      
+      <hr style="border:none; border-top:1px solid var(--border); margin:6px 0;">
+      <!-- Bouton de téléchargement local du fichier index.html -->
+      <button class="chip" style="padding:10px;" onclick="downloadThisHtmlFile()">💾 Télécharger ce fichier HTML (sauvegarde locale)</button>
+      
       <div class="modal-actions">
         <button class="chip" onclick="closeModal('menuModal')">Fermer</button>
       </div>
@@ -586,29 +600,32 @@
               ${v.photoUri ? `<img src="${v.photoUri}">` : `🍷`}
             </div>
             <div class="card-details">
-              <div class="card-title-row">
-                <div class="card-title">${v.nom}</div>
-                <div>
-                  <button class="icon-btn" style="width:24px;height:24px;font-size:12px;" onclick="duplicateWine(${v.id})" title="Dupliquer">📋</button>
-                  <button class="icon-btn" style="width:24px;height:24px;font-size:12px;" onclick="editWine(${v.id})" title="Modifier">✏️</button>
+              <div>
+                <div class="card-title-row">
+                  <div class="card-title">${v.nom}</div>
+                  <div style="display:flex;">
+                    <button class="icon-btn" style="width:26px;height:26px;font-size:13px;" onclick="duplicateWine(${v.id})" title="Dupliquer">📋</button>
+                    <button class="icon-btn" style="width:26px;height:26px;font-size:13px;" onclick="editWine(${v.id})" title="Modifier">✏️</button>
+                  </div>
                 </div>
+                ${v.domaine ? `<div class="domaine">${v.domaine}</div>` : ''}
+                <div class="meta-line">
+                  ${v.millesime ? `<span class="millesime-badge">${v.millesime}</span>` : ''}
+                  <span>${v.couleur} • ${v.aop || v.region || '-'}</span>
+                </div>
+                ${v.emplacement ? `<div class="meta-line" style="margin-top:2px;">📍 ${v.emplacement}</div>` : ''}
+                ${pret && selectedTab === 0 ? `<div class="apogee-badge">⏰ Apogée : ${v.aBoire || v.apogee}</div>` : ''}
+                ${selectedTab === 1 && v.noteDegustation ? `
+                  <div style="color:var(--star); font-size:12px; margin-top:3px;">${'★'.repeat(v.noteDegustation)}${'☆'.repeat(5-v.noteDegustation)}</div>${v.avisDegustation ? `<div style="font-size:11px; font-style:italic; margin-top:2px;">« ${v.avisDegustation} »</div>` : ''}
+                ` : ''}
               </div>
-              ${v.domaine ? `<div class="domaine">${v.domaine}</div>` : ''}
-              <div class="meta-line">
-                ${v.millesime ? `<span class="millesime-badge">${v.millesime}</span>` : ''}
-                <span>${v.couleur} • ${v.aop || v.region || '-'}</span>
-              </div>
-              ${v.emplacement ? `<div class="meta-line" style="margin-top:2px;">📍 ${v.emplacement}</div>` : ''}
-              ${pret && selectedTab === 0 ? `<div class="apogee-badge">⏰ Apogée : ${v.aBoire || v.apogee}</div>` : ''}
-              ${selectedTab === 1 && v.noteDegustation ? `
-                <div style="color:var(--star); font-size:12px; margin-top:2px;">${'★'.repeat(v.noteDegustation)}${'☆'.repeat(5-v.noteDegustation)}</div>${v.avisDegustation ? `<div style="font-size:11px; font-style:italic;">« ${v.avisDegustation} »</div>` : ''}
-              ` : ''}
+
               <div class="card-bottom">
                 ${selectedTab === 0 ? `
                   <button class="btn-action" onclick="openDegustation(${v.id})">🍷 Déguster</button>
                   <div class="qty-control">
                     <button class="qty-btn" onclick="changeQty(${v.id}, -1)">-</button>
-                    <span style="font-size:12px; font-weight:bold; margin:0 4px;">${v.quantite}</span>
+                    <span style="font-size:12px; font-weight:bold; margin:0 5px;">${v.quantite}</span>
                     <button class="qty-btn" onclick="changeQty(${v.id}, 1)">+</button>
                   </div>
                 ` : (selectedTab === 3 ? `
@@ -677,7 +694,6 @@
       }
     }
 
-    // Gestion des caves personnalisées
     function openCavesConfig() {
       renderCavesManager();
       document.getElementById('cavesConfigModal').classList.add('open');
@@ -729,7 +745,6 @@
       }
     }
 
-    // Modal Vin & Gestion des Photos compressées
     function openAddDialog() {
       currentEditingId = null;
       tempPhotoData = "";
@@ -805,7 +820,6 @@
       document.getElementById('winePhotoInput').value = "";
     }
 
-    // Compression de la photo pour économiser la mémoire locale
     function handlePhotoUpload(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -817,7 +831,7 @@
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
-          const maxDim = 800; // max 800px
+          const maxDim = 800;
 
           if (width > height && width > maxDim) {
             height = Math.round((height * maxDim) / width);
@@ -832,7 +846,6 @@
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Qualité JPEG 0.7 (très léger et net)
           tempPhotoData = canvas.toDataURL('image/jpeg', 0.7);
           document.getElementById('winePhotoPreview').src = tempPhotoData;
           document.getElementById('winePhotoPreview').style.display = 'block';
@@ -887,7 +900,6 @@
       }
     }
 
-    // Dégustation
     function openDegustation(id) {
       const v = vins.find(x => x.id === id);
       if (!v) return;
@@ -927,7 +939,6 @@
       closeModal('degustModal');
     }
 
-    // Statistiques
     function renderStats(enCave, hist) {
       const main = document.getElementById('mainContainer');
       const totalBottles = enCave.reduce((s, v) => s + v.quantite, 0);
@@ -972,7 +983,6 @@
       `;
     }
 
-    // Sommelier
     function openSommelier() {
       const enCave = vins.filter(v => !v.estConsomme && !v.estSouhait);
       const list = document.getElementById('sommelierList');
@@ -1024,19 +1034,14 @@
     function openMenu() { document.getElementById('menuModal').classList.add('open'); }
     function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
-    // ==========================================
-    // EXPORT ET IMPORT ZIP & CSV AVEC PHOTOS
-    // ==========================================
-
     async function exportZIP() {
       if (typeof JSZip === "undefined") {
-        alert("Chargement de l'outil de compression en cours... Réessayez dans quelques secondes.");
+        alert("Chargement de l'outil de compression... Réessayez dans 2 secondes.");
         return;
       }
 
       const zip = new JSZip();
       const photosFolder = zip.folder("photos");
-
       let csv = "Nom;Domaine;Région;AOP;Millésime;Couleur;Quantité;Prix unitaire (€);Valeur (€);Apogée;À boire;Emplacement;Commentaire;Note;Avis;Statut;PhotoPath\n";
 
       vins.forEach((v, idx) => {
@@ -1054,7 +1059,6 @@
       });
 
       zip.file("cave_backup.csv", csv);
-
       const content = await zip.generateAsync({ type: "blob" });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(content);
@@ -1094,7 +1098,6 @@
         const zip = await JSZip.loadAsync(file);
         let csvText = null;
 
-        // Trouver le fichier CSV dans l'archive
         for (let filename of Object.keys(zip.files)) {
           if (filename.toLowerCase().endsWith('.csv')) {
             csvText = await zip.files[filename].async("string");
@@ -1107,7 +1110,6 @@
           return;
         }
 
-        // Extraire les photos
         const photoMap = {};
         for (let filename of Object.keys(zip.files)) {
           if (filename.toLowerCase().startsWith('photos/') && !zip.files[filename].dir) {
@@ -1174,7 +1176,16 @@
       saveState();
     }
 
-    // Lancement de l'application
+    // Permet de télécharger le fichier index.html directement depuis la page
+    function downloadThisHtmlFile() {
+      const htmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+      const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "index.html";
+      a.click();
+    }
+
     renderApp();
   </script>
 </body>
