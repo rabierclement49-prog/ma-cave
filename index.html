@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>🍷 Ma Cave à Vin</title>
-  <!-- JSZip pour export/import avec photos -->
+  <!-- Client Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- JSZip pour export/import de secours -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     :root {
@@ -63,34 +65,36 @@
       flex-shrink: 0;
     }
     header h1 { margin: 0; font-size: 18px; font-weight: 800; }
-    .header-actions { display: flex; gap: 8px; }
+    .header-actions { display: flex; gap: 6px; align-items: center; }
     .icon-btn {
       background: none; border: none; font-size: 18px; cursor: pointer;
       color: var(--on-primary-container); border-radius: 50%; width: 36px; height: 36px;
       display: flex; align-items: center; justify-content: center;
     }
 
+    /* Écran d'authentification */
+    #authOverlay {
+      position: fixed; inset: 0; background: var(--bg); z-index: 200;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .auth-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+      padding: 24px; width: 100%; max-width: 380px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: flex; flex-direction: column; gap: 12px;
+    }
+
     .tabs {
-      display: flex;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
+      display: flex; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0;
     }
     .tab {
       flex: 1; text-align: center; padding: 10px 4px; font-size: 11px;
-      font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent;
-      color: var(--text-muted);
+      font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted);
     }
-    .tab.active {
-      color: var(--primary);
-      border-bottom-color: var(--primary);
-    }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
 
     .banner {
-      background: var(--surface-variant);
-      padding: 6px 14px; font-size: 12px; font-weight: 600;
-      display: flex; justify-content: space-between; align-items: center;
-      flex-shrink: 0;
+      background: var(--surface-variant); padding: 6px 14px; font-size: 12px; font-weight: 600;
+      display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
     }
     .badge-btn {
       background: #E8F5E9; color: var(--success); border: 1px solid #C8E6C9;
@@ -100,18 +104,13 @@
 
     .filters-bar {
       padding: 8px 12px; display: flex; flex-direction: column; gap: 6px;
-      background: var(--surface); border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
+      background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0;
     }
     .search-input {
-      width: 100%; padding: 8px 12px; border-radius: 8px;
-      border: 1px solid var(--border); background: var(--bg);
-      color: var(--text); font-size: 13px; outline: none;
+      width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); font-size: 13px; outline: none;
     }
-    .scroll-row {
-      display: flex; gap: 6px; overflow-x: auto; white-space: nowrap;
-      scrollbar-width: none;
-    }
+    .scroll-row { display: flex; gap: 6px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
     .scroll-row::-webkit-scrollbar { display: none; }
     .chip {
       background: var(--chip-bg); color: var(--text); border-radius: 16px;
@@ -128,34 +127,26 @@
       flex-direction: column; gap: 10px;
     }
 
-    /* Correction majeure : empêche l'écrasement des cartes */
     .wine-card {
-      background: var(--surface);
-      border-radius: 12px;
-      display: flex;
-      overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-      border: 1px solid var(--border);
-      flex-shrink: 0;
-      min-height: 105px;
+      background: var(--surface); border-radius: 12px; display: flex; overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid var(--border);
+      flex-shrink: 0; min-height: 105px;
     }
     .color-stripe { width: 6px; flex-shrink: 0; }
     .card-content { flex: 1; padding: 10px; display: flex; gap: 12px; min-width: 0; }
     .card-photo {
-      width: 68px; height: 68px; min-width: 68px; min-height: 68px;
-      border-radius: 8px; background: var(--surface-variant);
-      display: flex; align-items: center; justify-content: center; font-size: 26px;
-      overflow: hidden; flex-shrink: 0; align-self: flex-start;
+      width: 68px; height: 68px; min-width: 68px; min-height: 68px; border-radius: 8px;
+      background: var(--surface-variant); display: flex; align-items: center; justify-content: center;
+      font-size: 26px; overflow: hidden; flex-shrink: 0; align-self: flex-start;
     }
     .card-photo img { width: 100%; height: 100%; object-fit: cover; }
     .card-details { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; }
     .card-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 4px; }
-    .card-title { font-size: 14px; font-weight: 700; margin: 0; white-space: normal; line-height: 1.2; }
+    .card-title { font-size: 14px; font-weight: 700; margin: 0; line-height: 1.2; }
     .domaine { font-size: 12px; color: var(--text-muted); margin: 2px 0 4px 0; }
     .meta-line { font-size: 11px; color: var(--text-muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
     .millesime-badge {
-      background: #FFE082; color: #5D4037; font-weight: bold;
-      padding: 1px 5px; border-radius: 4px; font-size: 10px;
+      background: #FFE082; color: #5D4037; font-weight: bold; padding: 1px 5px; border-radius: 4px; font-size: 10px;
     }
     .apogee-badge {
       display: inline-block; background: var(--primary-container); color: var(--on-primary-container);
@@ -165,12 +156,11 @@
       display: flex; justify-content: space-between; align-items: center; margin-top: 8px; flex-wrap: wrap; gap: 6px;
     }
     .qty-control {
-      display: flex; align-items: center; background: var(--surface-variant);
-      border-radius: 12px; padding: 2px 6px;
+      display: flex; align-items: center; background: var(--surface-variant); border-radius: 12px; padding: 2px 6px;
     }
     .qty-btn {
-      background: none; border: none; color: var(--text); font-size: 15px;
-      font-weight: bold; width: 24px; height: 24px; cursor: pointer;
+      background: none; border: none; color: var(--text); font-size: 15px; font-weight: bold;
+      width: 24px; height: 24px; cursor: pointer;
     }
     .btn-action {
       background: var(--primary); color: white; border: none; border-radius: 6px;
@@ -178,16 +168,14 @@
     }
 
     .fab {
-      position: fixed; bottom: 20px; right: 20px; width: 52px; height: 52px;
-      border-radius: 26px; background: var(--primary); color: white; border: none;
-      font-size: 24px; box-shadow: 0 4px 8px rgba(0,0,0,0.25); cursor: pointer;
-      display: flex; align-items: center; justify-content: center; z-index: 10;
+      position: fixed; bottom: 20px; right: 20px; width: 52px; height: 52px; border-radius: 26px;
+      background: var(--primary); color: white; border: none; font-size: 24px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10;
     }
 
-    /* Modales */
     .modal-backdrop {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-      display: none; align-items: center; justify-content: center; padding: 16px; z-index: 100;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none;
+      align-items: center; justify-content: center; padding: 16px; z-index: 100;
     }
     .modal-backdrop.open { display: flex; }
     .modal-content {
@@ -204,21 +192,17 @@
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
 
-    /* Stats Screen */
     .stat-card {
-      background: var(--surface-variant); border-radius: 10px; padding: 12px;
-      display: flex; flex-direction: column; gap: 4px;
+      background: var(--surface-variant); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 4px;
     }
     .stat-val { font-size: 20px; font-weight: 800; color: var(--primary); }
     .progress-bar-bg { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; margin-top: 2px; }
     .progress-bar-fill { height: 100%; }
 
-    /* Sommelier Cards */
     .sommelier-cat {
       display: flex; align-items: center; gap: 12px; padding: 12px;
       background: var(--surface-variant); border-radius: 10px; cursor: pointer; margin-bottom: 8px;
     }
-
     .cave-item-row {
       display: flex; align-items: center; justify-content: space-between;
       padding: 6px 10px; background: var(--surface-variant); border-radius: 8px;
@@ -226,6 +210,30 @@
   </style>
 </head>
 <body>
+
+  <!-- Écran de Connexion / Inscription -->
+  <div id="authOverlay">
+    <div class="auth-card">
+      <div style="text-align:center;">
+        <span style="font-size:36px;">🍷</span>
+        <h2 style="margin:6px 0; font-size:20px; color:var(--primary);">Ma Cave à Vin</h2>
+        <p style="font-size:12px; color:var(--text-muted); margin:0;">Connectez-vous pour retrouver votre cave</p>
+      </div>
+
+      <div class="form-group">
+        <label>Adresse e-mail</label>
+        <input type="email" id="authEmail" placeholder="nom@exemple.com">
+      </div>
+      <div class="form-group">
+        <label>Mot de passe</label>
+        <input type="password" id="authPassword" placeholder="••••••••">
+      </div>
+
+      <button class="btn-action" style="justify-content:center; padding:10px; font-size:13px;" onclick="handleSignIn()">Se connecter</button>
+      <button class="chip" style="padding:8px; border:1px solid var(--border);" onclick="handleSignUp()">Créer un compte</button>
+      <div id="authError" style="color:#DC2626; font-size:11px; text-align:center;"></div>
+    </div>
+  </div>
 
   <header>
     <h1>🍷 Ma Cave à Vin</h1>
@@ -416,18 +424,16 @@
   <!-- Modale Options & Sauvegardes -->
   <div class="modal-backdrop" id="menuModal">
     <div class="modal-content">
-      <div class="modal-header">Options & Sauvegardes</div>
+      <div class="modal-header">Options & Compte</div>
+      <div style="font-size:12px; color:var(--text-muted);" id="userEmailDisplay"></div>
       <button class="chip" style="padding:10px; font-weight:bold;" onclick="closeModal('menuModal'); openCavesConfig();">⚙️ Gérer le nom de mes caves</button>
-      <button class="chip" style="padding:10px; font-weight:bold; background:var(--primary-container); color:var(--on-primary-container);" onclick="exportZIP()">📦 Sauvegarde complète ZIP (avec photos)</button>
-      <button class="chip" style="padding:10px;" onclick="exportCSV()">📄 Exporter CSV simple (sans photos)</button>
+      <button class="chip" style="padding:10px; font-weight:bold; background:var(--primary-container); color:var(--on-primary-container);" onclick="exportZIP()">📦 Sauvegarde locale ZIP (avec photos)</button>
+      <button class="chip" style="padding:10px;" onclick="exportCSV()">📄 Exporter CSV simple</button>
       
       <input type="file" id="restoreFileInput" accept=".zip,.csv" style="display:none;" onchange="handleRestoreFile(event)">
-      <button class="chip" style="padding:10px;" onclick="document.getElementById('restoreFileInput').click()">📥 Restaurer une sauvegarde (ZIP ou CSV)</button>
+      <button class="chip" style="padding:10px;" onclick="document.getElementById('restoreFileInput').click()">📥 Importer un CSV vers le Cloud</button>
       
-      <hr style="border:none; border-top:1px solid var(--border); margin:6px 0;">
-      <!-- Bouton de téléchargement local du fichier index.html -->
-      <button class="chip" style="padding:10px;" onclick="downloadThisHtmlFile()">💾 Télécharger ce fichier HTML (sauvegarde locale)</button>
-      
+      <button class="btn-action" style="background:#DC2626; justify-content:center; margin-top:8px;" onclick="handleSignOut()">Déconnexion</button>
       <div class="modal-actions">
         <button class="chip" onclick="closeModal('menuModal')">Fermer</button>
       </div>
@@ -443,22 +449,12 @@
   </datalist>
 
   <script>
-    const INITIAL_VINS = [
-      {
-        id: 1, nom: "Château Fombrauges", domaine: "Château Fombrauges", region: "Bordeaux",
-        aop: "Saint-Émilion Grand Cru", millesime: 2020, couleur: "Rouge", quantite: 2,
-        prixUnitaire: 24, apogee: 2030, aBoire: "Garder en cave", emplacement: "Cave 1 - Étagère A1",
-        commentaire: "Grand vin de Bordeaux tannique et élégant.", photoUri: "", estConsomme: false, estSouhait: false,
-        noteDegustation: 0, avisDegustation: ""
-      },
-      {
-        id: 2, nom: "La cuvée du couvent", domaine: "Domaine Capmartin", region: "Sud-Ouest",
-        aop: "Madiran", millesime: 2018, couleur: "Rouge", quantite: 3,
-        prixUnitaire: 14, apogee: 2026, aBoire: "Maintenant", emplacement: "Cave 2 - Casier 2",
-        commentaire: "Très beau vin du Sud-Ouest, prêt à boire.", photoUri: "", estConsomme: false, estSouhait: false,
-        noteDegustation: 0, avisDegustation: ""
-      }
-    ];
+    // =========================================================================
+    // CONFIGURATION SUPABASE (COLLE TES PROPRES CLÉS ICI)
+    // =========================================================================
+    const SUPABASE_URL = 'https://dchwnewxwdltbnwmuemh.supabase.co/rest/v1/';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjaHduZXd4d2RsdGJud211ZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MTE2NTEsImV4cCI6MjEwNjE4NzY1MX0.s_6Ghh4KmnY0f13WpSI9-OAqZEsVBJ9VTOaxJw6w5vc';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const DISH_CATEGORIES = [
       { id: "viande_rouge", title: "Viandes Rouges & Gibier", subtitle: "Côte de boeuf, Agneau, Magret", emoji: "🥩", colors: ["Rouge"], kw: ["Bordeaux", "Rhône", "Madiran", "Syrah", "Cabernet"] },
@@ -469,8 +465,9 @@
       { id: "dessert", title: "Desserts & Gourmandises", subtitle: "Tartes aux fruits, Chocolat", emoji: "🍰", colors: ["Pétillant", "Blanc"], kw: ["Champagne", "Moelleux", "Sauternes"] }
     ];
 
+    let currentUser = null;
+    let vins = [];
     let userCaves = JSON.parse(localStorage.getItem('macave_custom_caves')) || ["Cave 1", "Cave 2", "Charente"];
-    let vins = JSON.parse(localStorage.getItem('macave_vins')) || INITIAL_VINS;
     let selectedTab = 0;
     let selectedCouleur = "Toutes";
     let selectedCave = "Toutes les caves";
@@ -480,18 +477,97 @@
     let currentRating = 4;
     let tempPhotoData = "";
 
-    function saveState() {
-      try {
-        localStorage.setItem('macave_vins', JSON.stringify(vins));
-      } catch (e) {
-        alert("Attention : La mémoire locale est saturée à cause des photos. Pensez à exporter votre cave en ZIP régulièrement.");
+    // ==========================================
+    // AUTHENTIFICATION
+    // ==========================================
+    async function checkSession() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        currentUser = session.user;
+        document.getElementById('authOverlay').style.display = 'none';
+        document.getElementById('userEmailDisplay').innerText = `Connecté : ${currentUser.email}`;
+        await loadVinsFromCloud();
+      } else {
+        document.getElementById('authOverlay').style.display = 'flex';
       }
-      renderApp();
     }
 
-    function saveCavesState() {
-      localStorage.setItem('macave_custom_caves', JSON.stringify(userCaves));
-      renderApp();
+    async function handleSignIn() {
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      const errBox = document.getElementById('authError');
+      errBox.innerText = "";
+
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) {
+        errBox.innerText = error.message;
+      } else {
+        currentUser = data.user;
+        document.getElementById('authOverlay').style.display = 'none';
+        document.getElementById('userEmailDisplay').innerText = `Connecté : ${currentUser.email}`;
+        await loadVinsFromCloud();
+      }
+    }
+
+    async function handleSignUp() {
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      const errBox = document.getElementById('authError');
+      errBox.innerText = "";
+
+      if (password.length < 6) {
+        errBox.innerText = "Le mot de passe doit comporter au moins 6 caractères.";
+        return;
+      }
+
+      const { data, error } = await sb.auth.signUp({ email, password });
+      if (error) {
+        errBox.innerText = error.message;
+      } else {
+        alert("Compte créé avec succès !");
+        currentUser = data.user;
+        document.getElementById('authOverlay').style.display = 'none';
+        document.getElementById('userEmailDisplay').innerText = `Connecté : ${currentUser.email}`;
+        await loadVinsFromCloud();
+      }
+    }
+
+    async function handleSignOut() {
+      await sb.auth.signOut();
+      currentUser = null;
+      vins = [];
+      closeModal('menuModal');
+      document.getElementById('authOverlay').style.display = 'flex';
+    }
+
+    // ==========================================
+    // SYNCHRONISATION SUPABASE
+    // ==========================================
+    async function loadVinsFromCloud() {
+      const { data, error } = await sb.from('vins').select('*').order('created_at', { ascending: false });
+      if (!error && data) {
+        vins = data.map(v => ({
+          id: v.id,
+          nom: v.nom,
+          domaine: v.domaine || '',
+          region: v.region || '',
+          aop: v.aop || '',
+          millesime: v.millesime,
+          couleur: v.couleur || 'Rouge',
+          quantite: v.quantite,
+          prixUnitaire: parseFloat(v.prix_unitaire) || 0,
+          apogee: v.apogee,
+          aBoire: v.a_boire || '',
+          emplacement: v.emplacement || '',
+          commentaire: v.commentaire || '',
+          photoUri: v.photo_url || '',
+          noteDegustation: parseFloat(v.note_degustation) || 0,
+          avisDegustation: v.avis_degustation || '',
+          estConsomme: v.est_consomme,
+          estSouhait: v.est_souhait
+        }));
+        renderApp();
+      }
     }
 
     function toggleTheme() {
@@ -668,29 +744,33 @@
     function selectCouleur(c) { selectedCouleur = c; renderApp(); }
     function togglePretABoire() { pretABoireOnly = !pretABoireOnly; renderApp(); }
 
-    function changeQty(id, delta) {
+    async function changeQty(id, delta) {
       const v = vins.find(x => x.id === id);
       if (v) {
-        v.quantite = Math.max(0, v.quantite + delta);
-        saveState();
+        const nq = Math.max(0, v.quantite + delta);
+        v.quantite = nq;
+        renderApp();
+        await sb.from('vins').update({ quantite: nq }).eq('id', id);
       }
     }
 
-    function transferWishlist(id) {
+    async function transferWishlist(id) {
       const v = vins.find(x => x.id === id);
       if (v) {
         v.estSouhait = false;
         v.quantite = v.quantite || 1;
-        saveState();
+        renderApp();
+        await sb.from('vins').update({ est_souhait: false, quantite: v.quantite }).eq('id', id);
       }
     }
 
-    function restoreCave(id) {
+    async function restoreCave(id) {
       const v = vins.find(x => x.id === id);
       if (v) {
         v.estConsomme = false;
         v.quantite = 1;
-        saveState();
+        renderApp();
+        await sb.from('vins').update({ est_consomme: false, quantite: 1 }).eq('id', id);
       }
     }
 
@@ -715,8 +795,9 @@
       if (!val) return;
       if (!userCaves.includes(val)) {
         userCaves.push(val);
-        saveCavesState();
+        localStorage.setItem('macave_custom_caves', JSON.stringify(userCaves));
         renderCavesManager();
+        renderApp();
       }
       inp.value = "";
     }
@@ -724,16 +805,17 @@
     function deleteCave(idx) {
       if (confirm(`Supprimer "${userCaves[idx]}" de vos caves favorites ?`)) {
         userCaves.splice(idx, 1);
-        saveCavesState();
+        localStorage.setItem('macave_custom_caves', JSON.stringify(userCaves));
         renderCavesManager();
+        renderApp();
       }
     }
 
     function renderQuickCavesChips(currentVal) {
       const cont = document.getElementById('quickCavesRow');
-      cont.innerHTML = userCaves.map(cave => {
-        return `<button type="button" class="chip" onclick="applyCaveToForm('${cave}')">📍 ${cave}</button>`;
-      }).join('');
+      cont.innerHTML = userCaves.map(cave => `
+        <button type="button" class="chip" onclick="applyCaveToForm('${cave}')">📍 ${cave}</button>
+      `).join('');
     }
 
     function applyCaveToForm(caveName) {
@@ -856,12 +938,11 @@
       reader.readAsDataURL(file);
     }
 
-    function saveWine() {
+    async function saveWine() {
       const nom = document.getElementById('wNom').value.trim();
       if (!nom) return alert("Le nom est obligatoire !");
 
-      const item = {
-        id: currentEditingId || Date.now(),
+      const payload = {
         nom: nom,
         domaine: document.getElementById('wDomaine').value.trim(),
         region: document.getElementById('wRegion').value.trim(),
@@ -869,34 +950,33 @@
         millesime: parseInt(document.getElementById('wMillesime').value) || null,
         couleur: document.getElementById('wCouleur').value,
         quantite: parseInt(document.getElementById('wQuantite').value) || 0,
-        prixUnitaire: parseFloat(document.getElementById('wPrix').value) || 0,
+        prix_unitaire: parseFloat(document.getElementById('wPrix').value) || 0,
         apogee: parseInt(document.getElementById('wApogee').value) || null,
-        aBoire: document.getElementById('wABoire').value.trim(),
+        a_boire: document.getElementById('wABoire').value.trim(),
         emplacement: document.getElementById('wEmplacement').value.trim(),
         commentaire: document.getElementById('wCommentaire').value.trim(),
-        estSouhait: document.getElementById('wEstSouhait').checked,
-        estConsomme: false,
-        photoUri: tempPhotoData,
-        noteDegustation: 0,
-        avisDegustation: ""
+        est_souhait: document.getElementById('wEstSouhait').checked,
+        est_consomme: false,
+        photo_url: tempPhotoData
       };
 
+      closeModal('wineModal');
+
       if (currentEditingId) {
-        const idx = vins.findIndex(x => x.id === currentEditingId);
-        if (idx !== -1) vins[idx] = { ...vins[idx], ...item };
+        await sb.from('vins').update(payload).eq('id', currentEditingId);
       } else {
-        vins.unshift(item);
+        payload.user_id = currentUser.id;
+        await sb.from('vins').insert(payload);
       }
 
-      closeModal('wineModal');
-      saveState();
+      await loadVinsFromCloud();
     }
 
-    function deleteCurrentWine() {
+    async function deleteCurrentWine() {
       if (confirm("Supprimer ce vin ?")) {
-        vins = vins.filter(x => x.id !== currentEditingId);
         closeModal('wineModal');
-        saveState();
+        await sb.from('vins').delete().eq('id', currentEditingId);
+        await loadVinsFromCloud();
       }
     }
 
@@ -918,25 +998,44 @@
     }
     function setRating(r) { currentRating = r; renderStars(); }
 
-    function confirmDegustation() {
+    async function confirmDegustation() {
       const v = vins.find(x => x.id === currentDegustingId);
       if (v) {
         const avis = document.getElementById('degustAvis').value.trim();
+        closeModal('degustModal');
+
         if (v.quantite > 1) {
-          v.quantite--;
-          vins.push({
-            ...v, id: Date.now(), quantite: 1, estConsomme: true,
-            noteDegustation: currentRating, avisDegustation: avis
+          await sb.from('vins').update({ quantite: v.quantite - 1 }).eq('id', v.id);
+          await sb.from('vins').insert({
+            user_id: currentUser.id,
+            nom: v.nom,
+            domaine: v.domaine,
+            region: v.region,
+            aop: v.aop,
+            millesime: v.millesime,
+            couleur: v.couleur,
+            quantite: 1,
+            prix_unitaire: v.prixUnitaire,
+            apogee: v.apogee,
+            a_boire: v.aBoire,
+            emplacement: v.emplacement,
+            commentaire: v.commentaire,
+            photo_url: v.photoUri,
+            note_degustation: currentRating,
+            avis_degustation: avis,
+            est_consomme: true,
+            est_souhait: false
           });
         } else {
-          v.quantite = 0;
-          v.estConsomme = true;
-          v.noteDegustation = currentRating;
-          v.avisDegustation = avis;
+          await sb.from('vins').update({
+            quantite: 0,
+            est_consomme: true,
+            note_degustation: currentRating,
+            avis_degustation: avis
+          }).eq('id', v.id);
         }
-        saveState();
+        await loadVinsFromCloud();
       }
-      closeModal('degustModal');
     }
 
     function renderStats(enCave, hist) {
@@ -1034,12 +1133,10 @@
     function openMenu() { document.getElementById('menuModal').classList.add('open'); }
     function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
+    // ==========================================
+    // EXPORTS & IMPORTS (CSV / ZIP)
+    // ==========================================
     async function exportZIP() {
-      if (typeof JSZip === "undefined") {
-        alert("Chargement de l'outil de compression... Réessayez dans 2 secondes.");
-        return;
-      }
-
       const zip = new JSZip();
       const photosFolder = zip.folder("photos");
       let csv = "Nom;Domaine;Région;AOP;Millésime;Couleur;Quantité;Prix unitaire (€);Valeur (€);Apogée;À boire;Emplacement;Commentaire;Note;Avis;Statut;PhotoPath\n";
@@ -1047,14 +1144,12 @@
       vins.forEach((v, idx) => {
         const statut = v.estSouhait ? "Wishlist" : (v.estConsomme ? "Consommé" : "En cave");
         let photoPath = "";
-
         if (v.photoUri && v.photoUri.startsWith("data:image")) {
           const photoFileName = `photo_${idx + 1}_${Date.now()}.jpg`;
           const base64Data = v.photoUri.split(',')[1];
           photosFolder.file(photoFileName, base64Data, { base64: true });
           photoPath = `photos/${photoFileName}`;
         }
-
         csv += `"${v.nom}";"${v.domaine||''}";"${v.region||''}";"${v.aop||''}";${v.millesime||''};"${v.couleur}";${v.quantite};${v.prixUnitaire||0};${(v.quantite*(v.prixUnitaire||0))};${v.apogee||''};"${v.aBoire||''}";"${v.emplacement||''}";"${(v.commentaire||'').replace(/\n/g, ' ')};${v.noteDegustation||0};"${(v.avisDegustation||'').replace(/\n/g, ' ')};"${statut}";"${photoPath}"\n`;
       });
 
@@ -1083,110 +1178,51 @@
 
     async function handleRestoreFile(e) {
       const file = e.target.files[0];
-      if (!file) return;
+      if (!file || !currentUser) return;
 
-      if (file.name.endsWith('.zip')) {
-        await restoreFromZIP(file);
-      } else {
-        restoreFromCSV(file);
-      }
-      closeModal('menuModal');
-    }
-
-    async function restoreFromZIP(file) {
-      try {
-        const zip = await JSZip.loadAsync(file);
-        let csvText = null;
-
-        for (let filename of Object.keys(zip.files)) {
-          if (filename.toLowerCase().endsWith('.csv')) {
-            csvText = await zip.files[filename].async("string");
-            break;
-          }
-        }
-
-        if (!csvText) {
-          alert("Erreur : Aucun fichier CSV trouvé dans l'archive ZIP.");
-          return;
-        }
-
-        const photoMap = {};
-        for (let filename of Object.keys(zip.files)) {
-          if (filename.toLowerCase().startsWith('photos/') && !zip.files[filename].dir) {
-            const base64 = await zip.files[filename].async("base64");
-            photoMap[filename] = `data:image/jpeg;base64,${base64}`;
-          }
-        }
-
-        parseAndApplyCsv(csvText, photoMap);
-      } catch (err) {
-        console.error(err);
-        alert("Erreur lors de la lecture du fichier ZIP.");
-      }
-    }
-
-    function restoreFromCSV(file) {
       const reader = new FileReader();
-      reader.onload = ev => {
-        parseAndApplyCsv(ev.target.result, {});
+      reader.onload = async ev => {
+        const lines = ev.target.result.trim().split('\n');
+        if (lines.length < 2) return alert("Fichier CSV invalide");
+        const sep = lines[0].includes(';') ? ';' : ',';
+        const batch = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(sep).map(c => c.replace(/^"|"$/g, '').trim());
+          if (cols[0]) {
+            batch.push({
+              user_id: currentUser.id,
+              nom: cols[0],
+              domaine: cols[1] || '',
+              region: cols[2] || '',
+              aop: cols[3] || '',
+              millesime: parseInt(cols[4]) || null,
+              couleur: cols[5] || 'Rouge',
+              quantite: parseInt(cols[6]) || 1,
+              prix_unitaire: parseFloat(cols[7]) || 0,
+              apogee: parseInt(cols[9]) || null,
+              a_boire: cols[10] || '',
+              emplacement: cols[11] || '',
+              commentaire: cols[12] || '',
+              note_degustation: parseFloat(cols[13]) || 0,
+              avis_degustation: cols[14] || '',
+              est_consomme: (cols[15] || '').includes('Consommé'),
+              est_souhait: (cols[15] || '').includes('Wishlist')
+            });
+          }
+        }
+
+        if (confirm(`Importer ${batch.length} bouteilles vers votre compte en ligne ?`)) {
+          await sb.from('vins').insert(batch);
+          await loadVinsFromCloud();
+        }
+        closeModal('menuModal');
       };
       reader.readAsText(file);
     }
 
-    function parseAndApplyCsv(text, photoMap) {
-      const lines = text.trim().split('\n');
-      if (lines.length < 2) return alert("Fichier CSV invalide");
-      const sep = lines[0].includes(';') ? ';' : ',';
-      const newVins = [];
-
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(sep).map(c => c.replace(/^"|"$/g, '').trim());
-        if (cols[0]) {
-          const photoRel = cols[16] || "";
-          const resolvedPhoto = photoMap[photoRel] || "";
-
-          newVins.push({
-            id: Date.now() + i,
-            nom: cols[0],
-            domaine: cols[1] || '',
-            region: cols[2] || '',
-            aop: cols[3] || '',
-            millesime: parseInt(cols[4]) || null,
-            couleur: cols[5] || 'Rouge',
-            quantite: parseInt(cols[6]) || 1,
-            prixUnitaire: parseFloat(cols[7]) || 0,
-            apogee: parseInt(cols[9]) || null,
-            aBoire: cols[10] || '',
-            emplacement: cols[11] || '',
-            commentaire: cols[12] || '',
-            noteDegustation: parseFloat(cols[13]) || 0,
-            avisDegustation: cols[14] || '',
-            estConsomme: (cols[15] || '').includes('Consommé'),
-            estSouhait: (cols[15] || '').includes('Wishlist'),
-            photoUri: resolvedPhoto
-          });
-        }
-      }
-
-      if (confirm(`Importer ${newVins.length} bouteilles ?\n\n• Cliquez sur OK pour ajouter à la cave existante.\n• Cliquez sur Annuler pour remplacer intégralement la cave.`)) {
-        vins = [...vins, ...newVins];
-      } else {
-        vins = newVins;
-      }
-      saveState();
-    }
-
-    // Permet de télécharger le fichier index.html directement depuis la page
-    function downloadThisHtmlFile() {
-      const htmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
-      const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "index.html";
-      a.click();
-    }
-
-    renderApp();
+    // Vérification de la session au démarrage
+    checkSession();
   </script>
 </body>
 </html>
