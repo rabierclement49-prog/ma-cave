@@ -4,6 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>🍷 Ma Cave à Vin</title>
+
+  <!-- PWA & Mobile Web App Config -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#722F37">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Ma Cave">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
   <!-- Client Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- JSZip pour export/import avec photos -->
@@ -72,7 +81,6 @@
       display: flex; align-items: center; justify-content: center;
     }
 
-    /* Écran d'authentification */
     #authOverlay {
       position: fixed; inset: 0; background: var(--bg); z-index: 200;
       display: flex; align-items: center; justify-content: center; padding: 20px;
@@ -210,6 +218,15 @@
   </style>
 </head>
 <body>
+
+  <!-- Inscription Service Worker PWA -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed:', err));
+      });
+    }
+  </script>
 
   <!-- Écran de Connexion / Inscription -->
   <div id="authOverlay">
@@ -367,7 +384,7 @@
       <div class="modal-actions">
         <button class="chip" onclick="closeModal('wineModal')">Annuler</button>
         <button class="btn-action" style="background:#DC2626; display:none;" id="btnDeleteWine" onclick="deleteCurrentWine()">Supprimer</button>
-        <button class="btn-action" onclick="saveWine()">Enregistrer</button>
+        <button class="btn-action" id="btnSaveWineSubmit" onclick="saveWine()">Enregistrer</button>
       </div>
     </div>
   </div>
@@ -476,6 +493,7 @@
     let currentDegustingId = null;
     let currentRating = 4;
     let tempPhotoData = "";
+    let selectedPhotoFile = null;
 
     // ==========================================
     // AUTHENTIFICATION
@@ -830,6 +848,7 @@
     function openAddDialog() {
       currentEditingId = null;
       tempPhotoData = "";
+      selectedPhotoFile = null;
       document.getElementById('modalTitle').innerText = selectedTab === 3 ? "Ajouter à la Wishlist" : "Ajouter un vin";
       document.getElementById('btnDeleteWine').style.display = 'none';
       document.getElementById('wEstSouhait').checked = (selectedTab === 3);
@@ -857,6 +876,7 @@
       if (!v) return;
       currentEditingId = id;
       tempPhotoData = v.photoUri || "";
+      selectedPhotoFile = null;
       document.getElementById('modalTitle').innerText = "Modifier le vin";
       document.getElementById('btnDeleteWine').style.display = 'block';
       document.getElementById('wEstSouhait').checked = v.estSouhait;
@@ -897,6 +917,7 @@
 
     function removeCurrentPhoto() {
       tempPhotoData = "";
+      selectedPhotoFile = null;
       document.getElementById('winePhotoPreview').style.display = 'none';
       document.getElementById('btnRemovePhoto').style.display = 'none';
       document.getElementById('winePhotoInput').value = "";
@@ -928,19 +949,48 @@
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
-          tempPhotoData = canvas.toDataURL('image/jpeg', 0.7);
-          document.getElementById('winePhotoPreview').src = tempPhotoData;
-          document.getElementById('winePhotoPreview').style.display = 'block';
-          document.getElementById('btnRemovePhoto').style.display = 'block';
+          canvas.toBlob((blob) => {
+            selectedPhotoFile = blob;
+            tempPhotoData = URL.createObjectURL(blob);
+            document.getElementById('winePhotoPreview').src = tempPhotoData;
+            document.getElementById('winePhotoPreview').style.display = 'block';
+            document.getElementById('btnRemovePhoto').style.display = 'block';
+          }, 'image/jpeg', 0.7);
         };
         img.src = ev.target.result;
       };
       reader.readAsDataURL(file);
     }
 
+    async function uploadPhotoToStorage(blob) {
+      if (!blob || !currentUser) return "";
+      const fileName = `${currentUser.id}/${Date.now()}.jpg`;
+      const { data, error } = await sb.storage.from('photos').upload(fileName, blob, {
+        contentType: 'image/jpeg',
+        upsert: true
+      });
+      if (error) {
+        console.error("Storage upload error:", error);
+        return "";
+      }
+      const { data: publicUrlData } = sb.storage.from('photos').getPublicUrl(fileName);
+      return publicUrlData.publicUrl;
+    }
+
     async function saveWine() {
       const nom = document.getElementById('wNom').value.trim();
       if (!nom) return alert("Le nom est obligatoire !");
+
+      const btnSave = document.getElementById('btnSaveWineSubmit');
+      btnSave.innerText = "Envoi...";
+      btnSave.disabled = true;
+
+      let finalPhotoUrl = tempPhotoData;
+      // Si une nouvelle photo a été choisie, on l'envoie sur le Storage Supabase
+      if (selectedPhotoFile) {
+        const uploadedUrl = await uploadPhotoToStorage(selectedPhotoFile);
+        if (uploadedUrl) finalPhotoUrl = uploadedUrl;
+      }
 
       const payload = {
         nom: nom,
@@ -957,10 +1007,8 @@
         commentaire: document.getElementById('wCommentaire').value.trim(),
         est_souhait: document.getElementById('wEstSouhait').checked,
         est_consomme: false,
-        photo_url: tempPhotoData
+        photo_url: finalPhotoUrl
       };
-
-      closeModal('wineModal');
 
       if (currentEditingId) {
         await sb.from('vins').update(payload).eq('id', currentEditingId);
@@ -969,6 +1017,9 @@
         await sb.from('vins').insert(payload);
       }
 
+      btnSave.innerText = "Enregistrer";
+      btnSave.disabled = false;
+      closeModal('wineModal');
       await loadVinsFromCloud();
     }
 
@@ -1141,17 +1192,31 @@
       const photosFolder = zip.folder("photos");
       let csv = "Nom;Domaine;Région;AOP;Millésime;Couleur;Quantité;Prix unitaire (€);Valeur (€);Apogée;À boire;Emplacement;Commentaire;Note;Avis;Statut;PhotoPath\n";
 
-      vins.forEach((v, idx) => {
+      for (let idx = 0; idx < vins.length; idx++) {
+        const v = vins[idx];
         const statut = v.estSouhait ? "Wishlist" : (v.estConsomme ? "Consommé" : "En cave");
         let photoPath = "";
-        if (v.photoUri && v.photoUri.startsWith("data:image")) {
-          const photoFileName = `photo_${idx + 1}_${Date.now()}.jpg`;
-          const base64Data = v.photoUri.split(',')[1];
-          photosFolder.file(photoFileName, base64Data, { base64: true });
-          photoPath = `photos/${photoFileName}`;
+
+        if (v.photoUri) {
+          try {
+            const photoFileName = `photo_${idx + 1}_${Date.now()}.jpg`;
+            if (v.photoUri.startsWith("data:image")) {
+              const base64Data = v.photoUri.split(',')[1];
+              photosFolder.file(photoFileName, base64Data, { base64: true });
+              photoPath = `photos/${photoFileName}`;
+            } else if (v.photoUri.startsWith("http")) {
+              // Récupérer la photo distante de Supabase Storage pour le ZIP
+              const resp = await fetch(v.photoUri);
+              const blob = await resp.blob();
+              photosFolder.file(photoFileName, blob);
+              photoPath = `photos/${photoFileName}`;
+            }
+          } catch (e) {
+            console.warn("Could not add photo to zip:", e);
+          }
         }
         csv += `"${v.nom}";"${v.domaine||''}";"${v.region||''}";"${v.aop||''}";${v.millesime||''};"${v.couleur}";${v.quantite};${v.prixUnitaire||0};${(v.quantite*(v.prixUnitaire||0))};${v.apogee||''};"${v.aBoire||''}";"${v.emplacement||''}";"${(v.commentaire||'').replace(/\n/g, ' ')};${v.noteDegustation||0};"${(v.avisDegustation||'').replace(/\n/g, ' ')};"${statut}";"${photoPath}"\n`;
-      });
+      }
 
       zip.file("cave_backup.csv", csv);
       const content = await zip.generateAsync({ type: "blob" });
@@ -1212,12 +1277,17 @@
           return;
         }
 
+        // Upload des photos vers Supabase Storage
         const photoMap = {};
         for (let filename of Object.keys(zip.files)) {
           if (filename.toLowerCase().startsWith('photos/') && !zip.files[filename].dir) {
-            const base64 = await zip.files[filename].async("base64");
+            const blob = await zip.files[filename].async("blob");
             const cleanPath = filename.replace(/\\/g, '/');
-            photoMap[cleanPath] = `data:image/jpeg;base64,${base64}`;
+            // Téléversement direct dans Storage
+            const remoteUrl = await uploadPhotoToStorage(blob);
+            if (remoteUrl) {
+              photoMap[cleanPath] = remoteUrl;
+            }
           }
         }
 
@@ -1287,7 +1357,6 @@
       }
     }
 
-    // Vérification de la session au démarrage
     checkSession();
   </script>
 </body>
