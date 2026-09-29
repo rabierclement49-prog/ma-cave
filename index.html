@@ -6,7 +6,7 @@
   <title>🍷 Ma Cave à Vin</title>
   <!-- Client Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- JSZip pour export/import de secours -->
+  <!-- JSZip pour export/import avec photos -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     :root {
@@ -431,7 +431,7 @@
       <button class="chip" style="padding:10px;" onclick="exportCSV()">📄 Exporter CSV simple</button>
       
       <input type="file" id="restoreFileInput" accept=".zip,.csv" style="display:none;" onchange="handleRestoreFile(event)">
-      <button class="chip" style="padding:10px;" onclick="document.getElementById('restoreFileInput').click()">📥 Importer un CSV vers le Cloud</button>
+      <button class="chip" style="padding:10px; font-weight:bold;" onclick="document.getElementById('restoreFileInput').click()">📥 Restaurer une sauvegarde (ZIP ou CSV)</button>
       
       <button class="btn-action" style="background:#DC2626; justify-content:center; margin-top:8px;" onclick="handleSignOut()">Déconnexion</button>
       <div class="modal-actions">
@@ -450,7 +450,7 @@
 
   <script>
     // =========================================================================
-    // CONFIGURATION SUPABASE (COLLE TES PROPRES CLÉS ICI)
+    // CONFIGURATION SUPABASE
     // =========================================================================
     const SUPABASE_URL = 'https://dchwnewxwdltbnwmuemh.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjaHduZXd4d2RsdGJud211ZW1oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MTE2NTEsImV4cCI6MjEwNjE4NzY1MX0.s_6Ghh4KmnY0f13WpSI9-OAqZEsVBJ9VTOaxJw6w5vc';
@@ -1180,45 +1180,111 @@
       const file = e.target.files[0];
       if (!file || !currentUser) return;
 
-      const reader = new FileReader();
-      reader.onload = async ev => {
-        const lines = ev.target.result.trim().split('\n');
-        if (lines.length < 2) return alert("Fichier CSV invalide");
-        const sep = lines[0].includes(';') ? ';' : ',';
-        const batch = [];
+      closeModal('menuModal');
 
-        for (let i = 1; i < lines.length; i++) {
-          const cols = lines[i].split(sep).map(c => c.replace(/^"|"$/g, '').trim());
-          if (cols[0]) {
-            batch.push({
-              user_id: currentUser.id,
-              nom: cols[0],
-              domaine: cols[1] || '',
-              region: cols[2] || '',
-              aop: cols[3] || '',
-              millesime: parseInt(cols[4]) || null,
-              couleur: cols[5] || 'Rouge',
-              quantite: parseInt(cols[6]) || 1,
-              prix_unitaire: parseFloat(cols[7]) || 0,
-              apogee: parseInt(cols[9]) || null,
-              a_boire: cols[10] || '',
-              emplacement: cols[11] || '',
-              commentaire: cols[12] || '',
-              note_degustation: parseFloat(cols[13]) || 0,
-              avis_degustation: cols[14] || '',
-              est_consomme: (cols[15] || '').includes('Consommé'),
-              est_souhait: (cols[15] || '').includes('Wishlist')
-            });
+      if (file.name.endsWith('.zip')) {
+        await restoreZipToCloud(file);
+      } else {
+        await restoreCsvToCloud(file);
+      }
+      e.target.value = "";
+    }
+
+    async function restoreZipToCloud(file) {
+      if (typeof JSZip === "undefined") {
+        alert("Outil de décompression en cours de chargement. Réessayez dans 2 secondes.");
+        return;
+      }
+
+      try {
+        const zip = await JSZip.loadAsync(file);
+        let csvText = null;
+
+        for (let filename of Object.keys(zip.files)) {
+          if (filename.toLowerCase().endsWith('.csv')) {
+            csvText = await zip.files[filename].async("string");
+            break;
           }
         }
 
-        if (confirm(`Importer ${batch.length} bouteilles vers votre compte en ligne ?`)) {
-          await sb.from('vins').insert(batch);
-          await loadVinsFromCloud();
+        if (!csvText) {
+          alert("Erreur : aucun fichier CSV trouvé dans l'archive ZIP.");
+          return;
         }
-        closeModal('menuModal');
+
+        const photoMap = {};
+        for (let filename of Object.keys(zip.files)) {
+          if (filename.toLowerCase().startsWith('photos/') && !zip.files[filename].dir) {
+            const base64 = await zip.files[filename].async("base64");
+            const cleanPath = filename.replace(/\\/g, '/');
+            photoMap[cleanPath] = `data:image/jpeg;base64,${base64}`;
+          }
+        }
+
+        await processImportLines(csvText, photoMap);
+      } catch (err) {
+        console.error(err);
+        alert("Erreur lors de la lecture du fichier ZIP.");
+      }
+    }
+
+    async function restoreCsvToCloud(file) {
+      const reader = new FileReader();
+      reader.onload = async ev => {
+        await processImportLines(ev.target.result, {});
       };
       reader.readAsText(file);
+    }
+
+    async function processImportLines(text, photoMap) {
+      const lines = text.trim().split('\n');
+      if (lines.length < 2) return alert("Fichier CSV invalide");
+      const sep = lines[0].includes(';') ? ';' : ',';
+      const batch = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(sep).map(c => c.replace(/^"|"$/g, '').trim());
+        if (cols[0]) {
+          const rawPhoto = (cols[16] || '').replace(/\\/g, '/');
+          const photoData = photoMap[rawPhoto] || "";
+
+          batch.push({
+            user_id: currentUser.id,
+            nom: cols[0],
+            domaine: cols[1] || '',
+            region: cols[2] || '',
+            aop: cols[3] || '',
+            millesime: parseInt(cols[4]) || null,
+            couleur: cols[5] || 'Rouge',
+            quantite: parseInt(cols[6]) || 1,
+            prix_unitaire: parseFloat(cols[7]) || 0,
+            apogee: parseInt(cols[9]) || null,
+            a_boire: cols[10] || '',
+            emplacement: cols[11] || '',
+            commentaire: cols[12] || '',
+            note_degustation: parseFloat(cols[13]) || 0,
+            avis_degustation: cols[14] || '',
+            est_consomme: (cols[15] || '').includes('Consommé'),
+            est_souhait: (cols[15] || '').includes('Wishlist'),
+            photo_url: photoData
+          });
+        }
+      }
+
+      if (confirm(`Importer ${batch.length} bouteilles vers votre compte en ligne ?`)) {
+        const chunkSize = 50;
+        for (let i = 0; i < batch.length; i += chunkSize) {
+          const chunk = batch.slice(i, i + chunkSize);
+          const { error } = await sb.from('vins').insert(chunk);
+          if (error) {
+            console.error("Erreur d'import :", error);
+            alert("Erreur lors de l'enregistrement : " + error.message);
+            return;
+          }
+        }
+        await loadVinsFromCloud();
+        alert(`✅ ${batch.length} bouteilles importées avec succès !`);
+      }
     }
 
     // Vérification de la session au démarrage
